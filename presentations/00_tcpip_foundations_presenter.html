@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TCP/IP Foundations — Intern Bootcamp</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0a0c10;
+    --bg2: #0f1218;
+    --bg3: #161b24;
+    --border: #1e2733;
+    --border2: #2a3547;
+    --text: #c9d1d9;
+    --muted: #6e7a8a;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #00ff9f;
+    --accent4: #ffd166;
+    --red: #ff4757;
+    --purple: #b48eff;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── SLIDE ENGINE ── */
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide {
+    position: absolute; inset: 0;
+    display: none; flex-direction: column;
+    padding: 52px 64px;
+    opacity: 0; transform: translateX(18px);
+    transition: opacity .28s ease, transform .28s ease;
+  }
+  .slide.active { display: flex; }
+  .slide.visible { opacity: 1; transform: translateX(0); }
+
+  /* ── NAV ── */
+  .nav {
+    position: fixed; bottom: 28px; right: 36px;
+    display: flex; align-items: center; gap: 14px; z-index: 100;
+  }
+  .nav button {
+    background: var(--bg3); border: 1px solid var(--border2);
+    color: var(--text); font-family: var(--mono);
+    font-size: 11px; padding: 7px 14px; border-radius: 5px;
+    cursor: pointer; transition: all .15s;
+    letter-spacing: .05em;
+  }
+  .nav button:hover { background: var(--border2); color: var(--accent); border-color: var(--accent); }
+  .counter {
+    font-size: 10px; color: var(--muted);
+    font-family: var(--mono); letter-spacing: .08em;
+  }
+
+  /* ── PRESENTER MODE ── */
+  body.presenter-mode .slide { padding-bottom: 180px; }
+  .pnotes {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0;
+    background: #0d1117; border-top: 1px solid var(--border2);
+    padding: 16px 48px; font-size: 12px; line-height: 1.7;
+    color: #8b95a2; max-height: 170px; overflow-y: auto;
+    font-family: var(--mono);
+  }
+  body.presenter-mode .pnotes { display: block; }
+  .pnotes strong { color: var(--accent4); }
+
+  /* ── TYPOGRAPHY ── */
+  .kicker {
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    color: var(--accent); letter-spacing: .18em; text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .kicker.orange { color: var(--accent2); }
+  .kicker.green { color: var(--accent3); }
+  .kicker.yellow { color: var(--accent4); }
+  .kicker.purple { color: var(--purple); }
+  .kicker.red { color: var(--red); }
+
+  h1 {
+    font-family: var(--sans); font-size: clamp(36px, 5vw, 58px);
+    font-weight: 800; line-height: 1.05; color: #eaf2ff;
+    margin-bottom: 20px;
+  }
+  h2 {
+    font-family: var(--sans); font-size: clamp(26px, 3.5vw, 38px);
+    font-weight: 700; color: #eaf2ff; margin-bottom: 18px; line-height: 1.1;
+  }
+  h3 {
+    font-family: var(--sans); font-size: 18px; font-weight: 700;
+    color: var(--accent); margin-bottom: 8px;
+  }
+  p { font-size: 15px; line-height: 1.75; color: var(--text); }
+  p.lead { font-size: 18px; line-height: 1.7; }
+  li { font-size: 14px; line-height: 1.8; margin-left: 18px; }
+
+  /* ── COMPONENTS ── */
+  .tag {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    letter-spacing: .1em; padding: 3px 9px; border-radius: 3px;
+    text-transform: uppercase;
+  }
+  .tag.blue { background: rgba(0,212,255,.12); color: var(--accent); border: 1px solid rgba(0,212,255,.25); }
+  .tag.orange { background: rgba(255,107,53,.12); color: var(--accent2); border: 1px solid rgba(255,107,53,.25); }
+  .tag.green { background: rgba(0,255,159,.12); color: var(--accent3); border: 1px solid rgba(0,255,159,.25); }
+  .tag.yellow { background: rgba(255,209,102,.12); color: var(--accent4); border: 1px solid rgba(255,209,102,.25); }
+  .tag.red { background: rgba(255,71,87,.12); color: var(--red); border: 1px solid rgba(255,71,87,.25); }
+  .tag.purple { background: rgba(180,142,255,.12); color: var(--purple); border: 1px solid rgba(180,142,255,.25); }
+
+  .cmd {
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px; border-radius: 4px;
+    font-size: 13px; font-family: var(--mono);
+    color: var(--accent3); line-height: 1.6;
+    white-space: pre;
+  }
+  .cmd.orange { border-left-color: var(--accent2); }
+  .cmd.yellow { border-left-color: var(--accent4); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  .card {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px;
+  }
+  .card.accent-top { border-top: 2px solid var(--accent); }
+  .card.orange-top { border-top: 2px solid var(--accent2); }
+  .card.green-top { border-top: 2px solid var(--accent3); }
+  .card.yellow-top { border-top: 2px solid var(--accent4); }
+  .card.red-top { border-top: 2px solid var(--red); }
+  .card.purple-top { border-top: 2px solid var(--purple); }
+
+  .callout {
+    background: rgba(0,212,255,.06); border: 1px solid rgba(0,212,255,.2);
+    border-radius: 6px; padding: 14px 18px; margin-top: 16px;
+    font-size: 13px; line-height: 1.7;
+  }
+  .callout.orange { background: rgba(255,107,53,.06); border-color: rgba(255,107,53,.25); }
+  .callout.green { background: rgba(0,255,159,.06); border-color: rgba(0,255,159,.25); }
+  .callout.yellow { background: rgba(255,209,102,.06); border-color: rgba(255,209,102,.25); }
+  .callout.red { background: rgba(255,71,87,.06); border-color: rgba(255,71,87,.25); }
+  .callout.purple { background: rgba(180,142,255,.06); border-color: rgba(180,142,255,.25); }
+
+  .sep { width: 48px; height: 2px; background: var(--accent); margin: 16px 0; }
+  .sep.orange { background: var(--accent2); }
+  .sep.green { background: var(--accent3); }
+
+  /* ── COVER ── */
+  #s1 { justify-content: center; }
+  .cover-bg {
+    position: absolute; inset: 0; overflow: hidden; z-index: 0;
+  }
+  .cover-bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .cover-content { position: relative; z-index: 1; }
+
+  /* ── LAYER DIAGRAM ── */
+  .layer-stack {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .layer-row {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 16px;
+    transition: all .2s;
+    cursor: default;
+  }
+  .layer-row:hover { border-color: var(--border2); transform: translateX(4px); }
+  .layer-num {
+    font-size: 11px; font-weight: 700; color: var(--muted);
+    min-width: 22px;
+  }
+  .layer-name {
+    font-weight: 700; font-size: 14px; min-width: 120px;
+  }
+  .layer-desc { font-size: 12px; color: var(--muted); flex: 1; }
+  .layer-ex { font-size: 11px; }
+
+  /* ── SEGMENT/PACKET ANATOMY ── */
+  .packet-viz {
+    display: flex; flex-direction: column; gap: 8px;
+    font-size: 12px;
+  }
+  .pkt-row {
+    display: flex; border-radius: 5px; overflow: hidden;
+    border: 1px solid var(--border2); height: 38px;
+  }
+  .pkt-field {
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 10px; font-size: 11px; font-weight: 600;
+    letter-spacing: .04em; white-space: nowrap;
+  }
+
+  /* ── THREE WAY HANDSHAKE ── */
+  .handshake {
+    display: grid; grid-template-columns: 1fr 60px 1fr; gap: 0;
+    align-items: center;
+  }
+  .hs-box {
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 14px; text-align: center;
+    font-size: 13px; font-weight: 700;
+  }
+  .hs-arrow { text-align: center; font-size: 18px; color: var(--accent); }
+  .hs-step {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 0; border-bottom: 1px dashed var(--border);
+    font-size: 13px;
+  }
+  .hs-label { font-weight: 700; min-width: 60px; }
+
+  /* ── COMPARISON TABLE ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; padding: 10px 14px;
+    background: var(--bg3); color: var(--muted);
+    font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    border-bottom: 1px solid var(--border2);
+  }
+  td {
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    vertical-align: top; line-height: 1.6;
+  }
+  tr:last-child td { border-bottom: none; }
+
+  /* ── PORT TABLE ── */
+  .port-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  }
+  .port-card {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 12px;
+  }
+  .port-num { font-size: 20px; font-weight: 800; font-family: var(--sans); }
+  .port-proto { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .port-name { font-size: 11px; font-weight: 600; margin-top: 4px; }
+
+  /* ── TIMELINE / FLOW ── */
+  .flow { display: flex; flex-direction: column; gap: 0; }
+  .flow-item {
+    display: flex; gap: 16px; align-items: flex-start;
+    padding: 10px 0;
+  }
+  .flow-item:not(:last-child) {
+    border-bottom: 1px dashed var(--border);
+  }
+  .flow-num {
+    min-width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; flex-shrink: 0; margin-top: 1px;
+  }
+  .flow-num.orange { background: var(--accent2); }
+  .flow-num.green { background: var(--accent3); }
+  .flow-num.yellow { background: var(--accent4); }
+  .flow-num.purple { background: var(--purple); }
+  .flow-content { flex: 1; }
+  .flow-title { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .flow-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+  /* ── SLIDE PROGRESS ── */
+  .progress {
+    position: fixed; bottom: 0; left: 0;
+    height: 2px; background: var(--accent);
+    transition: width .3s ease; z-index: 200;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  .anim-1 { animation: fadeUp .4s .1s both; }
+  .anim-2 { animation: fadeUp .4s .2s both; }
+  .anim-3 { animation: fadeUp .4s .35s both; }
+  .anim-4 { animation: fadeUp .4s .5s both; }
+  .anim-5 { animation: fadeUp .4s .65s both; }
+
+  /* scrollable slide content */
+  .scroll-body { overflow-y: auto; flex: 1; padding-right: 8px; }
+  .scroll-body::-webkit-scrollbar { width: 4px; }
+  .scroll-body::-webkit-scrollbar-track { background: transparent; }
+  .scroll-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+<!-- ══════════════════════════════════════════ SLIDE 1 — COVER -->
+<div class="slide" id="s1">
+  <div class="cover-bg"><canvas id="coverCanvas"></canvas></div>
+  <div class="cover-content">
+    <div class="kicker anim-1">Intern Bootcamp · Session 0</div>
+    <h1 class="anim-2" style="font-size:clamp(42px,6vw,72px); max-width:820px;">How Computers<br>Actually Talk<br>to Each Other</h1>
+    <div class="sep anim-3"></div>
+    <p class="lead anim-3" style="max-width:580px; color:var(--muted);">
+      TCP/IP, UDP, ports, sockets — the invisible plumbing that every application you write depends on.
+    </p>
+    <div class="anim-4" style="margin-top:28px; display:flex; gap:10px; flex-wrap:wrap;">
+      <span class="tag blue">TCP/IP Stack</span>
+      <span class="tag orange">UDP vs TCP</span>
+      <span class="tag green">3-Way Handshake</span>
+      <span class="tag yellow">Ports & Sockets</span>
+      <span class="tag purple">Wireshark Demo</span>
+    </div>
+    <p class="anim-5" style="margin-top:36px; font-size:11px; color:var(--muted);">
+      ← → to navigate &nbsp;·&nbsp; <strong style="color:var(--accent)">Shift+P</strong> = presenter notes &nbsp;·&nbsp; <strong style="color:var(--accent)">N</strong> = toggle notes
+    </p>
+  </div>
+  <div class="pnotes">
+    <strong>Opening move:</strong> Start with a simple question — "what actually happens when you type google.com and hit Enter?" Let them guess. Most will say "DNS" or "HTTP" — which is correct, but that's layer 7. Ask them to go lower. Today we go all the way to the wire.<br>
+    <strong>Set expectation:</strong> This is Session 0. Everything you learn about DNS, containers, iptables, and TLS will sit on top of what we cover today. If this is shaky, everything on top wobbles.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ SLIDE 2 — WHY LAYERS? -->
+<div class="slide" id="s2">
+  <div class="kicker orange anim-1">The Big Picture</div>
+  <h2 class="anim-2">Why Do We Need a Layered Model?</h2>
+  <div class="sep orange anim-3"></div>
+  <div class="grid2 anim-3" style="margin-bottom:16px;">
+    <div>
+      <p style="margin-bottom:14px;">Two engineers built the internet: Vint Cerf and Bob Kahn, 1974. The core insight: <strong style="color:var(--accent)">separate concerns</strong>. A web developer shouldn't need to know how Ethernet checksums work. A network driver shouldn't care about HTTP headers.</p>
+      <p>Layers enforce contracts. Each layer talks only to the layer above and below. You can replace Ethernet with Wi-Fi, HTTP with gRPC — and the other layers don't care.</p>
+      <div class="callout orange" style="margin-top:14px;">
+        <strong style="color:var(--accent2)">Analogy:</strong> Shipping a package. You write the letter (application). Stuff it in an envelope (transport). Stick on an address (network). Drop at FedEx (link). You don't care how FedEx routes it.
+      </div>
+    </div>
+    <div>
+      <div class="layer-stack">
+        <div class="layer-row" style="border-left:3px solid var(--accent);">
+          <span class="layer-num">L7</span>
+          <span class="layer-name" style="color:var(--accent)">Application</span>
+          <span class="layer-desc">What apps speak</span>
+          <span class="layer-ex"><span class="tag blue">HTTP</span> <span class="tag blue">SSH</span> <span class="tag blue">DNS</span></span>
+        </div>
+        <div class="layer-row" style="border-left:3px solid var(--accent);">
+          <span class="layer-num">L6</span>
+          <span class="layer-name" style="color:var(--accent)">Presentation</span>
+          <span class="layer-desc">Encoding, TLS</span>
+          <span class="layer-ex"><span class="tag blue">TLS</span></span>
+        </div>
+        <div class="layer-row" style="border-left:3px solid var(--accent);">
+          <span class="layer-num">L5</span>
+          <span class="layer-name" style="color:var(--accent)">Session</span>
+          <span class="layer-desc">Session state</span>
+          <span class="layer-ex"><span class="tag blue">Sockets</span></span>
+        </div>
+        <div class="layer-row" style="border-left:3px solid var(--accent2);">
+          <span class="layer-num">L4</span>
+          <span class="layer-name" style="color:var(--accent2)">Transport</span>
+          <span class="layer-desc">End-to-end delivery</span>
+          <span class="layer-ex"><span class="tag orange">TCP</span> <span class="tag orange">UDP</span></span>
+        </div>
+        <div class="layer-row" style="border-left:3px solid var(--accent3);">
+          <span class="layer-num">L3</span>
+          <span class="layer-name" style="color:var(--accent3)">Network</span>
+          <span class="layer-desc">Addressing & routing</span>
+          <span class="layer-ex"><span class="tag green">IP</span> <span class="tag green">ICMP</span></span>
+        </div>
+        <div class="layer-row" style="border-left:3px solid var(--accent4);">
+          <span class="layer-num">L2</span>
+          <span class="layer-name" style="color:var(--accent4)">Data Link</span>
+          <span class="layer-desc">Node to node</span>
+          <span class="layer-ex"><span class="tag yellow">Ethernet</span> <span class="tag yellow">ARP</span></span>
+        </div>
+        <div class="layer-row" style="border-left:3px solid var(--muted);">
+          <span class="layer-num">L1</span>
+          <span class="layer-name" style="color:var(--muted)">Physical</span>
+          <span class="layer-desc">Bits on wire</span>
+          <span class="layer-ex"><span class="tag" style="background:rgba(110,122,138,.12);color:var(--muted);border:1px solid rgba(110,122,138,.25)">Copper · Fiber · RF</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="callout anim-4" style="font-size:12px;">
+    <strong style="color:var(--accent)">We live at L3 and L4 today.</strong> L7 is where your code runs. L3/L4 is where the OS routes, filters, and delivers traffic. This is the layer that iptables, firewalls, load balancers, and network engineers all operate on.
+  </div>
+  <div class="pnotes">
+    <strong>Teach the OSI model but frame it practically:</strong> L1–L2 is the NIC driver's problem. L3–L4 is the OS kernel's problem. L5–L7 is your application's problem. Today we're in kernel territory.<br>
+    <strong>Pro tip:</strong> Run <code>ip addr show</code> and <code>ip route show</code> on a terminal and ask "which layer is this?" IP addresses = L3. MAC addresses = L2. That's the first test.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ SLIDE 3 — IP ADDRESSING -->
+<div class="slide" id="s3">
+  <div class="kicker green anim-1">Layer 3 — Network</div>
+  <h2 class="anim-2">IP Addresses: How Machines Are Named on a Network</h2>
+  <div class="sep green anim-3"></div>
+  <div class="grid2 anim-3">
+    <div>
+      <h3>IPv4 — 32 bits, 4 octets</h3>
+      <div class="cmd" style="margin-bottom:14px;">192.168.1.47
+↑       ↑   ↑  ↑
+Network portion  Host portion
+(subnet dependent)</div>
+      <p style="font-size:13px; margin-bottom:12px;">Every device on a network gets an IP address. The <strong style="color:var(--accent)">subnet mask</strong> (e.g. /24 = 255.255.255.0) determines which bits are "network" vs "host". Machines in the same subnet talk directly. Different subnets require a router.</p>
+      <div class="cmd green" style="margin-bottom:12px;"># Show your IPs
+ip addr show
+ip -4 addr show eth0
+
+# Show routing table
+ip route show</div>
+      <div class="callout green" style="font-size:12px;">
+        <strong style="color:var(--accent3)">CIDR notation:</strong> 10.0.0.0/16 means first 16 bits are network. Gives you 65,534 usable hosts. /24 gives 254. /32 is a single host.
+      </div>
+    </div>
+    <div>
+      <h3 style="color:var(--accent4)">Private vs Public Ranges</h3>
+      <table style="margin-bottom:16px;">
+        <tr><th>Range</th><th>CIDR</th><th>Usage</th></tr>
+        <tr><td style="color:var(--accent3)">10.x.x.x</td><td>10.0.0.0/8</td><td>Large private nets (AWS VPC default)</td></tr>
+        <tr><td style="color:var(--accent3)">172.16–31.x</td><td>172.16.0.0/12</td><td>Docker default bridge</td></tr>
+        <tr><td style="color:var(--accent3)">192.168.x.x</td><td>192.168.0.0/16</td><td>Home/office LANs</td></tr>
+        <tr><td style="color:var(--muted)">Everything else</td><td>—</td><td>Public internet (routable)</td></tr>
+      </table>
+      <h3 style="color:var(--purple)">ICMP — The Network's Diagnostic Tool</h3>
+      <div class="cmd orange" style="font-size:12px;"># Reachability test
+ping -c 4 8.8.8.8
+
+# Path tracing — see every hop
+traceroute 8.8.8.8
+# or on RHEL8:
+mtr 8.8.8.8</div>
+      <div class="callout orange" style="font-size:12px; margin-top:10px;">
+        <strong style="color:var(--accent2)">ICMP is not TCP or UDP</strong> — it's L3 only. ping/traceroute responses being blocked ≠ the host is down. Firewalls commonly block ICMP. A closed TCP port will still reply.
+      </div>
+    </div>
+  </div>
+  <div class="pnotes">
+    <strong>Demo:</strong> <code>ip addr show</code> to see the machine's IP. Then <code>ping 8.8.8.8</code>. Then <code>ping -c 1 192.168.1.1</code> (default gateway). Ask: why does one work over the network and one stays local?<br>
+    <strong>Gotcha to plant:</strong> "If two machines are on different subnets, what must exist between them?" Answer: a router (or a default gateway). That's the next question.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ SLIDE 3b — RFC 1918 + NAT -->
+<div class="slide" id="s3b">
+  <div class="kicker yellow anim-1">Layer 3 — Addressing</div>
+  <h2 class="anim-2">Private Addresses &amp; NAT: How 4 Billion IPs Serve 8 Billion People</h2>
+  <div class="sep anim-3" style="background:var(--accent4);"></div>
+  <div class="grid2 anim-3">
+    <div>
+      <h3 style="color:var(--accent4)">RFC 1918 — The Three Private Blocks</h3>
+      <p style="font-size:13px; margin-bottom:12px;">IPv4 is 32 bits = ~4.3 billion addresses. The internet has more devices than that. The fix: reserve blocks that <strong style="color:var(--accent)">ISP backbone routers will never forward</strong>. Reuse them freely behind NAT.</p>
+      <table style="margin-bottom:14px;">
+        <tr><th>Block</th><th>Range</th><th>Size</th><th>Typical Use</th></tr>
+        <tr>
+          <td style="color:var(--accent); font-family:var(--mono); font-weight:700;">10.0.0.0/8</td>
+          <td style="font-size:12px; color:var(--muted);">10.x.x.x</td>
+          <td>16.7M</td>
+          <td>Cloud VPCs, enterprise, Kubernetes. <strong style="color:var(--accent)">Your OCI VCN is 10.0.0.0/16.</strong></td>
+        </tr>
+        <tr>
+          <td style="color:var(--accent2); font-family:var(--mono); font-weight:700;">172.16.0.0/12</td>
+          <td style="font-size:12px; color:var(--muted);">172.16–31.x.x</td>
+          <td>1M</td>
+          <td>Docker default bridge (172.17.0.0/16). Your Pi-hole container lives here.</td>
+        </tr>
+        <tr>
+          <td style="color:var(--purple); font-family:var(--mono); font-weight:700;">192.168.0.0/16</td>
+          <td style="font-size:12px; color:var(--muted);">192.168.x.x</td>
+          <td>65K</td>
+          <td>Home routers (TP-Link, cable modems). Everyone's LAN.</td>
+        </tr>
+      </table>
+      <div class="callout yellow" style="font-size:12px;">
+        <strong style="color:var(--accent4)">Non-routable means:</strong> if a packet with dst 10.x.x.x or 192.168.x.x hits an ISP core router, it's dropped. Two different homes can both run 192.168.1.1 with zero conflict — they never meet on the public internet.
+      </div>
+    </div>
+    <div>
+      <h3 style="color:var(--accent3)">NAT — The Mechanism That Makes It Work</h3>
+      <p style="font-size:13px; margin-bottom:10px;">NAT (Network Address Translation) sits at the boundary between private and public. Your home router, your OCI IGW path, vpn7 for WireGuard clients — all doing NAT.</p>
+      <div class="cmd orange" style="font-size:12px; line-height:1.9; margin-bottom:12px;">Your laptop (192.168.1.5)
+  sends packet to 8.8.8.8:53
+  
+Router intercepts — rewrites src:
+  192.168.1.5:54321 → 203.0.113.5:54321
+  Logs mapping in conntrack table
+  
+Reply arrives at 203.0.113.5:54321
+  Router looks up conntrack → 192.168.1.5
+  Rewrites dst back, delivers to laptop</div>
+      <div class="callout green" style="font-size:12px; margin-bottom:10px;">
+        <strong style="color:var(--accent3)">SNAT vs DNAT:</strong><br>
+        <strong>SNAT</strong> (outbound) — rewrites source IP. Your home router. vpn7's MASQUERADE rule for WireGuard clients. Initiated from <em>inside</em>.<br>
+        <strong>DNAT</strong> (inbound) — rewrites destination IP. Port forwarding. How inbound :500 reaches vpn7's WireGuard process. Requires an explicit rule — no prior connection means no conntrack entry.
+      </div>
+      <div class="cmd" style="font-size:12px;"># View the kernel's NAT conntrack table
+sudo conntrack -L 2>/dev/null | head -10
+# or raw:
+cat /proc/net/nf_conntrack | head -5
+
+# vpn7's MASQUERADE rule (WireGuard clients)
+sudo iptables -t nat -L POSTROUTING -v -n</div>
+    </div>
+  </div>
+  <div class="pnotes">
+    <strong>Hook to open with:</strong> Ask them — "your phone is 192.168.x.x at home. What IP does google.com see when you visit it?" Run <code>curl ifconfig.me</code> from their laptop. The answer IS the NAT gateway. That gap between what they have and what the internet sees is NAT.<br>
+    <strong>vpn7 context:</strong> vpn7 is in a public OCI subnet (10.0.0.0/16 VCN, direct IGW route). It has a real public IP. When WireGuard peers connect and their tunnel traffic needs to reach the internet, vpn7 runs iptables MASQUERADE — it's acting as their NAT gateway, same as their home TP-Link does for them. Docker containers (172.17.0.0/16) get the same treatment automatically.<br>
+    <strong>CGNAT gotcha:</strong> Many mobile ISPs do carrier-grade NAT (RFC 6598, 100.64.0.0/10) — your phone behind mobile data may be double-NATted. That's why some VPNs and P2P break on cellular.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ SLIDE 4 — TCP INTRO -->
+<div class="slide" id="s4">
+  <div class="kicker anim-1">Layer 4 — Transport</div>
+  <h2 class="anim-2">TCP: Reliable, Ordered, Connection-Oriented</h2>
+  <div class="sep anim-3"></div>
+  <div class="anim-3">
+    <p class="lead" style="margin-bottom:20px; max-width:900px;">
+      TCP is the postal service that guarantees delivery, tracks every package, and re-sends anything lost. It's the <em>contract</em> between two endpoints.
+    </p>
+  </div>
+  <div class="grid2 anim-4">
+    <div>
+      <h3>What TCP Guarantees</h3>
+      <div class="flow" style="margin-bottom:16px;">
+        <div class="flow-item">
+          <div class="flow-num">1</div>
+          <div class="flow-content">
+            <div class="flow-title">Delivery confirmation</div>
+            <div class="flow-desc">Every byte sent gets an ACK back. If ACK doesn't arrive, TCP retransmits. Automatically.</div>
+          </div>
+        </div>
+        <div class="flow-item">
+          <div class="flow-num" style="background:var(--accent2); color:var(--bg);">2</div>
+          <div class="flow-content">
+            <div class="flow-title">Ordering</div>
+            <div class="flow-desc">Packets arrive out of order on the wire — TCP reassembles them in the correct sequence using sequence numbers.</div>
+          </div>
+        </div>
+        <div class="flow-item">
+          <div class="flow-num" style="background:var(--accent3); color:var(--bg);">3</div>
+          <div class="flow-content">
+            <div class="flow-title">Flow control</div>
+            <div class="flow-desc">Receiver tells sender "I can only handle X bytes right now" via the window size field. Prevents buffer overflow.</div>
+          </div>
+        </div>
+        <div class="flow-item">
+          <div class="flow-num" style="background:var(--accent4); color:var(--bg);">4</div>
+          <div class="flow-content">
+            <div class="flow-title">Congestion control</div>
+            <div class="flow-desc">TCP detects packet loss and slows itself down. This is why large downloads back off when the network is saturated.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3 style="color:var(--accent2)">TCP Header Anatomy</h3>
+      <div class="packet-viz">
+        <div class="pkt-row">
+          <div class="pkt-field" style="flex:2; background:rgba(0,212,255,.12); color:var(--accent);">Src Port (16b)</div>
+          <div class="pkt-field" style="flex:2; background:rgba(0,212,255,.08); color:var(--accent);">Dst Port (16b)</div>
+        </div>
+        <div class="pkt-row">
+          <div class="pkt-field" style="flex:4; background:rgba(255,107,53,.1); color:var(--accent2);">Sequence Number (32 bits)</div>
+        </div>
+        <div class="pkt-row">
+          <div class="pkt-field" style="flex:4; background:rgba(255,107,53,.08); color:var(--accent2);">Acknowledgement Number (32 bits)</div>
+        </div>
+        <div class="pkt-row">
+          <div class="pkt-field" style="flex:1; background:rgba(0,255,159,.1); color:var(--accent3);">Hdr Len</div>
+          <div class="pkt-field" style="flex:2; background:rgba(255,209,102,.12); color:var(--accent4);">Flags: SYN ACK FIN RST PSH URG</div>
+          <div class="pkt-field" style="flex:1.5; background:rgba(180,142,255,.1); color:var(--purple);">Window Size</div>
+        </div>
+        <div class="pkt-row">
+          <div class="pkt-field" style="flex:2; background:rgba(110,122,138,.1); color:var(--muted);">Checksum</div>
+          <div class="pkt-field" style="flex:2; background:rgba(110,122,138,.08); color:var(--muted);">Urgent Pointer</div>
+        </div>
+        <div class="pkt-row">
+          <div class="pkt-field" style="flex:4; background:rgba(0,212,255,.05); color:var(--muted);">Options (variable) + Data</div>
+        </div>
+      </div>
+      <div class="callout" style="font-size:12px; margin-top:12px;">
+        <strong style="color:var(--accent)">The flags are everything.</strong> SYN starts a connection. ACK acknowledges. FIN closes gracefully. RST kills immediately. You'll see all of these in Wireshark.
+      </div>
+    </div>
+  </div>
+  <div class="pnotes">
+    <strong>Key concept to drive home:</strong> TCP adds overhead — that 20-byte minimum header on every segment, plus the round-trips for handshake and ACKs. That overhead is the cost of reliability.<br>
+    <strong>Demo setup:</strong> <code>tcpdump -i eth0 -n port 443</code> while hitting any HTTPS site. Watch the SYN → SYN-ACK → ACK sequence in real time.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ SLIDE 5 — 3-WAY HANDSHAKE -->
+<div class="slide" id="s5">
+  <div class="kicker anim-1">TCP Deep Dive</div>
+  <h2 class="anim-2">The 3-Way Handshake: How TCP Connections Are Born</h2>
+  <div class="sep anim-3"></div>
+  <div class="grid2 anim-3">
+    <div>
+      <p style="margin-bottom:16px; font-size:14px;">Before a single byte of HTTP or application data flows, TCP performs a synchronized state negotiation. This is the "conversation before the conversation."</p>
+      <div class="flow">
+        <div class="flow-item">
+          <div class="flow-num">1</div>
+          <div class="flow-content">
+            <div class="flow-title" style="color:var(--accent);">SYN — "I want to connect"</div>
+            <div class="flow-desc">Client sends SYN with its Initial Sequence Number (ISN). Randomly chosen to prevent spoofing. "My sequence starts at 1234."</div>
+          </div>
+        </div>
+        <div class="flow-item">
+          <div class="flow-num" style="background:var(--accent2); color:var(--bg);">2</div>
+          <div class="flow-content">
+            <div class="flow-title" style="color:var(--accent2);">SYN-ACK — "OK, and here's mine"</div>
+            <div class="flow-desc">Server ACKs client's ISN (seq+1) and sends its own ISN. "Got your 1234, mine starts at 5678."</div>
+          </div>
+        </div>
+        <div class="flow-item">
+          <div class="flow-num" style="background:var(--accent3); color:var(--bg);">3</div>
+          <div class="flow-content">
+            <div class="flow-title" style="color:var(--accent3);">ACK — "Connection established"</div>
+            <div class="flow-desc">Client ACKs server's ISN. Both sides now have synchronized sequence numbers. Data flows.</div>
+          </div>
+        </div>
+      </div>
+      <div class="callout green" style="font-size:12px; margin-top:14px;">
+        <strong style="color:var(--accent3)">Why 3 and not 2?</strong> 2-way only confirms one direction. A 3-way handshake proves both directions work — client→server AND server→client. You need both for full-duplex TCP.
+      </div>
+    </div>
+    <div>
+      <h3 style="color:var(--accent4); margin-bottom:12px;">ASCII Timeline</h3>
+      <div class="cmd yellow" style="font-size:12px; line-height:1.9;">Client                    Server
+  |                          |
+  |------- SYN (seq=x) ----->|
+  |                          |  [Server: LISTEN → SYN_RCVD]
+  |<-- SYN-ACK (seq=y,ack=x+1)--|
+  |                          |
+  |------- ACK (ack=y+1) --->|
+  |                          |  [Both: ESTABLISHED]
+  |====== DATA FLOWS ========|
+  |                          |
+  |------- FIN ------------->|  [Client: FIN_WAIT_1]
+  |<------ ACK --------------|
+  |<------ FIN --------------|  [Server: CLOSE_WAIT]
+  |------- ACK ------------->|  [TIME_WAIT → CLOSED]</div>
+      <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+        <div class="card" style="flex:1; padding:12px;">
+          <div style="font-size:10px; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.1em;">SYN Flood Attack</div>
+          <p style="font-size:12px; color:var(--text);">Attacker sends millions of SYNs, never completes the handshake. Server fills SYN queue, runs out of memory for legitimate connections. Defense: SYN cookies.</p>
+        </div>
+      </div>
+      <div class="cmd" style="margin-top:10px; font-size:12px;"># Watch TCP states live
+ss -tn
+# See SYN_RECV, ESTABLISHED,
+# TIME_WAIT, CLOSE_WAIT
+netstat -an | grep -E 'SYN|ESTAB'</div>
+    </div>
+  </div>
+  <div class="pnotes">
+    <strong>Best demo:</strong> <code>ss -tn state established</code> while loading a web page. Watch connections appear and disappear. Ask them: "what happens if step 2 never arrives?" Answer: SYN timeout, client retries with exponential backoff.<br>
+    <strong>TCP TIME_WAIT question:</strong> Why does TIME_WAIT exist? Answer: ensures the final ACK reached the server. Lasts 2*MSL (Maximum Segment Lifetime, typically 60s). You'll see this constantly on busy servers.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ SLIDE 6 — UDP -->
+<div class="slide" id="s6">
+  <div class="kicker orange anim-1">Layer 4 — Transport</div>
+  <h2 class="anim-2">UDP: Fire and Forget — When Speed Beats Certainty</h2>
+  <div class="sep orange anim-3"></div>
+  <div class="anim-3">
+    <p class="lead" style="margin-bottom:20px; max-width:900px;">
+      UDP is the postcard — no tracking, no confirmation, no retransmit. What it trades in reliability, it wins back in raw speed and zero connection overhead.
+    </p>
+  </div>
+  <div class="grid2 anim-4">
+    <div>
+      <h3 style="color:var(--accent2)">UDP Header — Brutally Simple</h3>
+      <div class="packet-viz" style="margin-bottom:16px;">
+        <div class="pkt-row">
+          <div class="pkt-field" style="flex:2; background:rgba(255,107,53,.15); color:var(--accent2);">Src Port (16 bits)</div>
+          <div class="pkt-field" style="flex:2; background:rgba(255,107,53,.1); color:var(--accent2);">Dst Port (16 bits)</div>
+        </div>
+        <div class="pkt-row">
+          <div class="pkt-field" style="flex:2; background:rgba(255,107,53,.08); color:var(--muted);">Length (16 bits)</div>
+          <div class="pkt-field" style="flex:2; background:rgba(255,107,53,.06); color:var(--muted);">Checksum (16 bits)</div>
+        </div>
+        <div class="pkt-row">
+          <div class="pkt-field" style="flex:4; background:rgba(255,107,53,.04); color:var(--muted);">Data</div>
+        </div>
+      </div>
+      <p style="font-size:13px; margin-bottom:10px;">TCP header: minimum <strong style="color:var(--accent)">20 bytes</strong>. UDP header: always <strong style="color:var(--accent2)">8 bytes</strong>. No handshake. No state. No ACK. You send, you hope.</p>
+      <div class="callout orange" style="font-size:12px;">
+        <strong style="color:var(--accent2)">No connection = no overhead.</strong> UDP datagrams are sent immediately. The kernel doesn't maintain any connection table for UDP sockets. This matters massively at scale — DNS servers handle millions of queries/sec using UDP.
+      </div>
+    </div>
+    <div>
+      <h3 style="color:var(--accent3)">UDP Is Not "Worse Than TCP" — It's Different</h3>
+      <table style="margin-bottom:14px;">
+        <tr><th>Protocol</th><th>Reliability</th><th>Overhead</th><th>Use Case</th></tr>
+        <tr>
+          <td><span class="tag blue">TCP</span></td>
+          <td style="color:var(--accent3)">Guaranteed</td>
+          <td style="color:var(--red)">High</td>
+          <td>HTTP, SSH, DB, email</td>
+        </tr>
+        <tr>
+          <td><span class="tag orange">UDP</span></td>
+          <td style="color:var(--red)">Best-effort</td>
+          <td style="color:var(--accent3)">Minimal</td>
+          <td>DNS, video, gaming, VoIP</td>
+        </tr>
+      </table>
+      <h3 style="color:var(--purple); margin-top:14px;">Real Applications Using UDP</h3>
+      <div class="grid2" style="gap:8px;">
+        <div class="card" style="padding:10px;">
+          <div style="color:var(--accent4); font-size:11px; font-weight:700; margin-bottom:4px;">DNS :53</div>
+          <p style="font-size:11px; color:var(--muted);">Query fits in one packet. Falls back to TCP only if response &gt; 512 bytes (now 4096 with EDNS)</p>
+        </div>
+        <div class="card" style="padding:10px;">
+          <div style="color:var(--accent4); font-size:11px; font-weight:700; margin-bottom:4px;">Video Streaming</div>
+          <p style="font-size:11px; color:var(--muted);">A dropped frame is better than a paused video. Stale data is useless — don't retransmit it.</p>
+        </div>
+        <div class="card" style="padding:10px;">
+          <div style="color:var(--accent4); font-size:11px; font-weight:700; margin-bottom:4px;">WireGuard / QUIC</div>
+          <p style="font-size:11px; color:var(--muted);">VPN tunnels and HTTP/3 both run over UDP. They implement their own reliability layer on top.</p>
+        </div>
+        <div class="card" style="padding:10px;">
+          <div style="color:var(--accent4); font-size:11px; font-weight:700; margin-bottom:4px;">NTP :123</div>
+          <p style="font-size:11px; color:var(--muted);">Time sync. You don't need guaranteed delivery for "what time is it?" — fast wins.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="pnotes">
+    <strong>Key insight to give them:</strong> WireGuard (which they'll use) runs over UDP port 51820. QUIC (HTTP/3) runs over UDP port 443. Modern protocols are moving TO UDP and implementing reliability in userspace because they can tune it better than the kernel's TCP stack.<br>
+    <strong>Demo:</strong> <code>dig google.com</code> — that's UDP. <code>dig +tcp google.com</code> — forces TCP. Compare the timing. DNS over UDP is measurably faster.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ SLIDE 7 — PORTS & SOCKETS -->
+<div class="slide" id="s7">
+  <div class="kicker yellow anim-1">Ports & Sockets</div>
+  <h2 class="anim-2">Ports: How the OS Routes Packets to the Right Process</h2>
+  <div class="sep anim-3" style="background:var(--accent4);"></div>
+  <div class="grid2 anim-3">
+    <div>
+      <p style="margin-bottom:14px; font-size:14px;">An IP address gets you to a <em>machine</em>. A port gets you to a <em>process</em>. Together, they form a <strong style="color:var(--accent)">socket</strong> — the unique 5-tuple that identifies every active connection.</p>
+      <div class="cmd yellow" style="margin-bottom:14px;">Socket = {Protocol, Src IP, Src Port, Dst IP, Dst Port}
+
+Example:
+TCP  10.0.1.5:54321  →  93.184.216.34:443
+
+That 5-tuple is UNIQUE. The kernel uses it
+to demux packets to the right process.</div>
+      <div class="callout yellow" style="font-size:12px;">
+        <strong style="color:var(--accent4)">Port ranges:</strong><br>
+        0–1023 → Well-known / privileged (needs root to bind)<br>
+        1024–49151 → Registered / common apps<br>
+        49152–65535 → Ephemeral (kernel-assigned for outbound)
+      </div>
+      <div class="cmd" style="margin-top:12px; font-size:12px;"># What's listening on this machine?
+ss -tlnp
+# All active connections
+ss -tnp
+# Who owns port 8080?
+lsof -i :8080</div>
+    </div>
+    <div>
+      <h3 style="color:var(--accent4); margin-bottom:12px;">Well-Known Ports — Memorize These</h3>
+      <div class="port-grid">
+        <div class="port-card">
+          <div class="port-num" style="color:var(--accent)">22</div>
+          <div class="port-proto">TCP</div>
+          <div class="port-name">SSH</div>
+        </div>
+        <div class="port-card">
+          <div class="port-num" style="color:var(--accent2)">80</div>
+          <div class="port-proto">TCP</div>
+          <div class="port-name">HTTP</div>
+        </div>
+        <div class="port-card">
+          <div class="port-num" style="color:var(--accent3)">443</div>
+          <div class="port-proto">TCP</div>
+          <div class="port-name">HTTPS</div>
+        </div>
+        <div class="port-card">
+          <div class="port-num" style="color:var(--accent4)">53</div>
+          <div class="port-proto">UDP/TCP</div>
+          <div class="port-name">DNS</div>
+        </div>
+        <div class="port-card">
+          <div class="port-num" style="color:var(--purple)">3306</div>
+          <div class="port-proto">TCP</div>
+          <div class="port-name">MySQL</div>
+        </div>
+        <div class="port-card">
+          <div class="port-num" style="color:var(--accent)">5432</div>
+          <div class="port-proto">TCP</div>
+          <div class="port-name">PostgreSQL</div>
+        </div>
+        <div class="port-card">
+          <div class="port-num" style="color:var(--accent2)">6379</div>
+          <div class="port-proto">TCP</div>
+          <div class="port-name">Redis</div>
+        </div>
+        <div class="port-card">
+          <div class="port-num" style="color:var(--red)">51820</div>
+          <div class="port-proto">UDP</div>
+          <div class="port-name">WireGuard</div>
+        </div>
+      </div>
+      <div class="callout" style="font-size:12px; margin-top:12px;">
+        <strong style="color:var(--accent)">Ephemeral ports:</strong> When your browser connects to port 443, your OS assigns it a random source port (e.g. 54231). The server responds to that port. This is why you can have 50,000 simultaneous connections from one machine.
+      </div>
+    </div>
+  </div>
+  <div class="pnotes">
+    <strong>Critical mental model:</strong> The socket 5-tuple is the kernel's connection demultiplexer. Run <code>ss -tnp state established</code> and show them all the open connections — browser tabs, SSH sessions, etc. Each has a unique 5-tuple.<br>
+    <strong>Exercise:</strong> <code>ss -tlnp | grep :80</code> — is anything listening on 80? Start a Python HTTP server: <code>python3 -m http.server 8080</code> and show it appear in ss.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ SLIDE 8 — FULL JOURNEY -->
+<div class="slide" id="s8">
+  <div class="kicker purple anim-1">Putting It Together</div>
+  <h2 class="anim-2">What Happens When You Run: <code style="font-size:22px; color:var(--accent)">curl https://github.com</code></h2>
+  <div class="sep anim-3" style="background:var(--purple);"></div>
+  <div class="scroll-body anim-3">
+    <div class="flow">
+      <div class="flow-item">
+        <div class="flow-num">1</div>
+        <div class="flow-content">
+          <div class="flow-title">DNS Resolution (UDP :53)</div>
+          <div class="flow-desc">OS checks /etc/hosts, then /etc/resolv.conf resolver. Sends UDP query for github.com A record. Gets back 140.82.121.3 (or similar). All in ~5ms.</div>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num" style="background:var(--accent2);color:var(--bg);">2</div>
+        <div class="flow-content">
+          <div class="flow-title">Routing Decision (L3)</div>
+          <div class="flow-desc">Kernel checks ip route table. 140.82.x.x is not local, so: use default gateway (your router). ARP resolves the gateway MAC address on L2.</div>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num" style="background:var(--accent3);color:var(--bg);">3</div>
+        <div class="flow-content">
+          <div class="flow-title">TCP Handshake to :443 (SYN → SYN-ACK → ACK)</div>
+          <div class="flow-desc">Kernel picks ephemeral port (e.g. 54812). Sends SYN. GitHub's LB responds SYN-ACK. Connection ESTABLISHED.</div>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num" style="background:var(--accent4);color:var(--bg);">4</div>
+        <div class="flow-content">
+          <div class="flow-title">TLS Handshake (L5-L6)</div>
+          <div class="flow-desc">Client Hello → Server Hello + Certificate → Key exchange → Finished. Now all data is encrypted. TLS sits on TOP of TCP — it's not replacing it.</div>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num" style="background:var(--purple);color:var(--bg);">5</div>
+        <div class="flow-content">
+          <div class="flow-title">HTTP GET (L7)</div>
+          <div class="flow-desc">curl sends GET / HTTP/1.1. GitHub's server responds with 301 redirect or 200 OK + HTML. All riding inside the established TCP+TLS session.</div>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num" style="background:var(--muted);color:var(--bg);">6</div>
+        <div class="flow-content">
+          <div class="flow-title">TCP Teardown (FIN/ACK)</div>
+          <div class="flow-desc">curl sends FIN. Server ACKs + sends its own FIN. Client ACKs. Connection enters TIME_WAIT, then CLOSED. Socket resources freed.</div>
+        </div>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:14px; font-size:12px;">
+      <strong style="color:var(--accent)">Every single step above is visible in Wireshark or tcpdump.</strong> The wire doesn't lie. When something breaks, this is the chain you debug — start at L3 (can I ping it?), then L4 (can I TCP connect?), then L7 (is the app responding?).
+    </div>
+    <div class="cmd" style="margin-top:12px; font-size:12px;"># See all layers live
+tcpdump -i eth0 -n host github.com
+# Measure each step
+curl -w "\nDNS: %{time_namelookup}s\nConnect: %{time_connect}s\nTLS: %{time_appconnect}s\nTotal: %{time_total}s\n" -o /dev/null -s https://github.com</div>
+  </div>
+  <div class="pnotes">
+    <strong>This is the money slide.</strong> Everything from the previous slides converges here. Walk it step by step and pause at each one to point back: "remember SYN-ACK from slide 5? That's step 3."<br>
+    <strong>Best live demo:</strong> The curl -w timing breakdown shows every layer's contribution. DNS lookup, TCP connect time, TLS time are all distinct. Run it against github.com and a local service — compare the numbers.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ SLIDE 9 — TCP STATES -->
+<div class="slide" id="s9">
+  <div class="kicker red anim-1">TCP Internals</div>
+  <h2 class="anim-2">TCP State Machine: What the Kernel Tracks per Connection</h2>
+  <div class="sep anim-3" style="background:var(--red);"></div>
+  <div class="grid2 anim-3">
+    <div>
+      <p style="font-size:13px; margin-bottom:14px;">TCP is a <strong style="color:var(--accent)">state machine</strong>. Every connection the kernel maintains has a state. These states are visible with <code>ss</code> and <code>netstat</code>. When debugging production issues, these states tell the story.</p>
+      <table>
+        <tr><th>State</th><th>Meaning</th></tr>
+        <tr><td style="color:var(--accent3); font-weight:700;">LISTEN</td><td>Server socket waiting for SYN. Your nginx/postgres are here.</td></tr>
+        <tr><td style="color:var(--accent)">SYN_SENT</td><td>Client sent SYN, waiting for SYN-ACK.</td></tr>
+        <tr><td style="color:var(--accent2)">SYN_RCVD</td><td>Server got SYN, sent SYN-ACK, waiting for ACK.</td></tr>
+        <tr><td style="color:var(--accent3); font-weight:700;">ESTABLISHED</td><td>Connection active. Data flows.</td></tr>
+        <tr><td style="color:var(--accent4)">FIN_WAIT_1/2</td><td>Active close — sent FIN, draining.</td></tr>
+        <tr><td style="color:var(--muted)">CLOSE_WAIT</td><td>Got FIN from peer, app hasn't called close() yet. Bug indicator.</td></tr>
+        <tr><td style="color:var(--red)">TIME_WAIT</td><td>Closed but holding 2*MSL (~60s) to catch stale packets.</td></tr>
+        <tr><td style="color:var(--red)">CLOSED</td><td>Connection fully terminated.</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3 style="color:var(--accent2)">Prod Debugging Cheatsheet</h3>
+      <div class="cmd orange" style="font-size:12px; line-height:1.9;"># Count connections by state
+ss -tn | awk '{print $1}' | sort | uniq -c | sort -rn
+
+# Lots of TIME_WAIT = high connection churn
+# → use HTTP keep-alive / connection pooling
+
+# Lots of CLOSE_WAIT = app bug
+# → app not calling close() after receiving FIN
+
+# SYN_RECV flooding = SYN flood attack
+# → check: sysctl net.ipv4.tcp_syncookies
+
+# Ports exhausted? (ephemeral range full)
+cat /proc/sys/net/ipv4/ip_local_port_range
+# Default: 32768 to 60999 = ~28k ports
+# Fix: tune or use SO_REUSEPORT</div>
+      <div class="callout red" style="font-size:12px; margin-top:12px;">
+        <strong style="color:var(--red)">CLOSE_WAIT ≠ TIME_WAIT.</strong> TIME_WAIT is normal and healthy — the OS is being careful. CLOSE_WAIT accumulating means your application has a resource leak — it received a FIN but the app never closed the socket. That will exhaust file descriptors.
+      </div>
+      <div class="cmd" style="margin-top:10px; font-size:12px;"># See per-process socket usage
+ss -tnp | grep CLOSE_WAIT | awk '{print $NF}' | sort | uniq -c</div>
+    </div>
+  </div>
+  <div class="pnotes">
+    <strong>Production context:</strong> In a real environment you'll frequently see thousands of TIME_WAIT entries on a busy web server — that's normal. What kills you is CLOSE_WAIT accumulating. The fix is always in the application code, not the kernel tunables.<br>
+    <strong>RHEL8 note:</strong> <code>ss</code> is the modern replacement for <code>netstat</code>. On RHEL8, <code>netstat</code> may not even be installed by default (it's in the net-tools package). Teach <code>ss</code>.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ SLIDE 10 — PRACTICAL TOOLS -->
+<div class="slide" id="s10">
+  <div class="kicker green anim-1">Toolkit</div>
+  <h2 class="anim-2">Your TCP/IP Debugging Toolkit</h2>
+  <div class="sep green anim-3"></div>
+  <div class="grid2 anim-3">
+    <div>
+      <h3 style="color:var(--accent3)">Observation Tools</h3>
+      <div class="flow" style="margin-bottom:14px;">
+        <div class="flow-item">
+          <div class="flow-num" style="background:var(--accent3); color:var(--bg); font-size:9px; font-weight:900;">ss</div>
+          <div class="flow-content">
+            <div class="flow-title">Socket Statistics</div>
+            <div class="flow-desc"><code>ss -tnlp</code> — listening ports + owning process. Your first stop when debugging "why can't I connect"</div>
+          </div>
+        </div>
+        <div class="flow-item">
+          <div class="flow-num" style="background:var(--accent); color:var(--bg); font-size:8px; font-weight:900;">tcp</div>
+          <div class="flow-content">
+            <div class="flow-title">tcpdump</div>
+            <div class="flow-desc"><code>tcpdump -i eth0 -n 'port 443'</code> — raw packet capture. See the actual SYN/ACK flags. The ground truth.</div>
+          </div>
+        </div>
+        <div class="flow-item">
+          <div class="flow-num" style="background:var(--accent2); color:var(--bg); font-size:8px; font-weight:900;">nc</div>
+          <div class="flow-content">
+            <div class="flow-title">netcat</div>
+            <div class="flow-desc"><code>nc -zv host port</code> — test TCP connectivity without needing the actual service. Works for any port.</div>
+          </div>
+        </div>
+        <div class="flow-item">
+          <div class="flow-num" style="background:var(--accent4); color:var(--bg); font-size:9px; font-weight:900;">mtr</div>
+          <div class="flow-content">
+            <div class="flow-title">mtr (My Traceroute)</div>
+            <div class="flow-desc"><code>mtr 8.8.8.8</code> — continuous traceroute with packet loss per hop. Better than traceroute for intermittent issues.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3 style="color:var(--accent)">Quick Diagnostic Patterns</h3>
+      <div class="cmd" style="font-size:12px; line-height:2; margin-bottom:12px;"># Can I reach the host at all? (L3)
+ping -c 3 <target-ip>
+
+# Can I open a TCP connection? (L4)
+nc -zv <host> <port>
+# or:
+timeout 3 bash -c 'cat < /dev/null > /dev/tcp/host/port'
+
+# What is the app saying? (L7)
+curl -v https://host:port/path
+
+# Who is listening locally?
+ss -tlnp
+
+# Follow a packet from this machine
+tcpdump -i any -n host <target> -w /tmp/cap.pcap
+# Open in wireshark for GUI analysis</div>
+      <div class="callout" style="font-size:12px;">
+        <strong style="color:var(--accent)">Debug order:</strong><br>
+        1. ping → L3 reachability<br>
+        2. nc -zv → L4 port open?<br>
+        3. curl -v → L7 app responding?<br>
+        4. tcpdump → what's actually on the wire?<br>
+        This sequence eliminates 90% of "why can't I connect" issues in under 2 minutes.
+      </div>
+    </div>
+  </div>
+  <div class="pnotes">
+    <strong>Lab exercise:</strong> Give them a host that has a firewall rule blocking port 80 but not 22. Have them diagnose which layer the problem is at. They should:<br>
+    1. ping succeeds (L3 OK)<br>
+    2. nc -zv host 80 fails (L4 blocked)<br>
+    3. nc -zv host 22 succeeds (SSH open)<br>
+    Then they check iptables rules. This is the debugging loop they'll run for the rest of their careers.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ SLIDE 11 — HOW THIS CONNECTS -->
+<div class="slide" id="s11">
+  <div class="kicker anim-1">Bridge Forward</div>
+  <h2 class="anim-2">How This Connects to Everything Else You'll Learn</h2>
+  <div class="sep anim-3"></div>
+  <div class="anim-3">
+    <p style="margin-bottom:20px; font-size:15px; max-width:900px;">Everything in modern infrastructure is just TCP/IP with extra labels on it. Now that you have the foundation:</p>
+  </div>
+  <div class="grid3 anim-4">
+    <div class="card accent-top">
+      <h3>DNS (Next Session)</h3>
+      <p style="font-size:13px; margin-top:8px;">DNS queries are UDP port 53. Responses &gt;512 bytes fall back to TCP :53. When you debug DNS, you're debugging UDP datagrams. You already know the plumbing.</p>
+    </div>
+    <div class="card orange-top">
+      <h3 style="color:var(--accent2)">iptables / nftables</h3>
+      <p style="font-size:13px; margin-top:8px;">Firewall rules match on the 5-tuple: src IP, dst IP, protocol, src port, dst port. Every ACCEPT and DROP rule is operating on exactly what you learned today.</p>
+    </div>
+    <div class="card green-top">
+      <h3 style="color:var(--accent3)">Docker Networking</h3>
+      <p style="font-size:13px; margin-top:8px;">Docker creates virtual network interfaces, assigns private IPs (172.17.0.0/16), and uses NAT + port forwarding to map container ports to host ports. All L3/L4.</p>
+    </div>
+    <div class="card yellow-top">
+      <h3 style="color:var(--accent4)">WireGuard / Tailscale</h3>
+      <p style="font-size:13px; margin-top:8px;">WireGuard is UDP packets containing encrypted IP packets. Tailscale is WireGuard + a coordination plane. It's just IP over UDP — the model you now understand.</p>
+    </div>
+    <div class="card purple-top">
+      <h3 style="color:var(--purple)">TLS / HTTPS</h3>
+      <p style="font-size:13px; margin-top:8px;">TLS rides on top of an established TCP connection. The TCP handshake you just learned always happens first, then TLS negotiates on top of it. They're sequential, not parallel.</p>
+    </div>
+    <div class="card red-top">
+      <h3 style="color:var(--red)">Load Balancers / AWS ALB</h3>
+      <p style="font-size:13px; margin-top:8px;">An ALB terminates your TCP (and TLS) connection, then opens a new TCP connection to a backend instance. It's a TCP proxy — SYN flood mitigation happens here.</p>
+    </div>
+  </div>
+  <div class="callout anim-5" style="margin-top:16px; font-size:13px;">
+    <strong style="color:var(--accent)">The through-line:</strong> Every session from here on builds on L3 and L4. When things break, you'll always come back down to this layer to find the truth. The wire doesn't lie.
+  </div>
+  <div class="pnotes">
+    <strong>Closing move:</strong> Ask them to name one thing they use every day that they now understand differently. Likely answers: browser tabs (each = TCP connection), Slack (TCP to relay servers), SSH (TCP :22 with a multiplexed channel protocol on top).<br>
+    <strong>Homework (if you want to assign it):</strong> Open Wireshark on their laptop, visit any website, find the SYN, SYN-ACK, ACK in the capture. Screenshot it. That's the assignment.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ SLIDE 12 — QUESTIONS -->
+<div class="slide" id="s12">
+  <div class="kicker purple anim-1">Check for Understanding</div>
+  <h2 class="anim-2">5 Questions That Test Real Understanding</h2>
+  <div class="sep anim-3" style="background:var(--purple);"></div>
+  <div class="anim-3">
+    <div class="flow">
+      <div class="flow-item">
+        <div class="flow-num">Q1</div>
+        <div class="flow-content">
+          <div class="flow-title">You curl a service and get "connection refused." What does that actually mean at the TCP level?</div>
+          <div class="flow-desc" style="color:var(--muted);">Answer: The server received the SYN and replied with RST. IP routing worked (L3 OK), but nothing is listening on that port (L4 rejected). RST = "I'm here, but I'm not taking connections on this port."</div>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num" style="background:var(--accent2);color:var(--bg);">Q2</div>
+        <div class="flow-content">
+          <div class="flow-title">Why does a DNS server use UDP instead of TCP?</div>
+          <div class="flow-desc" style="color:var(--muted);">Answer: A DNS query + response is typically &lt;512 bytes — fits in one UDP datagram. No need for handshake. At millions of queries/sec, eliminating the 3-way handshake overhead is massive.</div>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num" style="background:var(--accent3);color:var(--bg);">Q3</div>
+        <div class="flow-content">
+          <div class="flow-title">Two services on the same machine both listen on port 8080. What happens?</div>
+          <div class="flow-desc" style="color:var(--muted);">Answer: Second bind() fails with EADDRINUSE. A port can only be bound once per IP per protocol (unless SO_REUSEPORT is set). The kernel can't demux if two processes claim the same dst_port.</div>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num" style="background:var(--accent4);color:var(--bg);">Q4</div>
+        <div class="flow-content">
+          <div class="flow-title">Your app has 50,000 CLOSE_WAIT connections. Production is degrading. What's wrong?</div>
+          <div class="flow-desc" style="color:var(--muted);">Answer: The application received FIN from the remote side but never called close() on the socket. It's a code bug — the app is leaking file descriptors. Kernel tunables won't fix it.</div>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num" style="background:var(--purple);color:var(--bg);">Q5</div>
+        <div class="flow-content">
+          <div class="flow-title">ping succeeds but nc -zv host 443 fails. What layer is the problem at, and what are your next steps?</div>
+          <div class="flow-desc" style="color:var(--muted);">Answer: L3 works (ICMP flows). L4 is blocked. Suspect: firewall rule dropping TCP :443 (check iptables -L, security group, or the destination service isn't running). tcpdump on both sides next.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="pnotes">
+    <strong>Don't just reveal answers — make them work for it.</strong> For Q1, ask "what RST means" first. Most won't know. That's the lesson. For Q5, walk through the elimination — if they get to "check iptables", they've internalized the model.
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<!-- Progress bar -->
+<div class="progress" id="progress"></div>
+
+<!-- Nav -->
+<div class="nav">
+  <button onclick="go(cur-1)">← Prev</button>
+  <span class="counter" id="counter">1 / 13</span>
+  <button onclick="go(cur+1)">Next →</button>
+</div>
+
+<script>
+  const SLIDES = ['s1','s2','s3','s3b','s4','s5','s6','s7','s8','s9','s10','s11','s12'];
+  const TOTAL = SLIDES.length;
+  let cur = 0; // index into SLIDES
+  let presenterMode = false;
+
+  function go(n) {
+    if (n < 0 || n >= TOTAL) return;
+    const prev = document.getElementById(SLIDES[cur]);
+    if (prev) { prev.classList.remove('visible'); setTimeout(() => prev.classList.remove('active'), 280); }
+    cur = n;
+    const next = document.getElementById(SLIDES[cur]);
+    if (next) {
+      next.classList.add('active');
+      setTimeout(() => next.classList.add('visible'), 20);
+    }
+    document.getElementById('counter').textContent = (cur + 1) + ' / ' + TOTAL;
+    document.getElementById('progress').style.width = (((cur + 1) / TOTAL) * 100) + '%';
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') go(cur + 1);
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') go(cur - 1);
+    if (e.key === 'P' && e.shiftKey) {
+      presenterMode = !presenterMode;
+      document.body.classList.toggle('presenter-mode', presenterMode);
+    }
+    if (e.key === 'n' || e.key === 'N') {
+      presenterMode = !presenterMode;
+      document.body.classList.toggle('presenter-mode', presenterMode);
+    }
+  });
+
+  // Swipe
+  let tx = 0;
+  document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+  document.addEventListener('touchend', e => {
+    const dx = tx - e.changedTouches[0].clientX;
+    if (Math.abs(dx) > 50) go(cur + (dx > 0 ? 1 : -1));
+  });
+
+  // Cover particle canvas
+  function initCover() {
+    const c = document.getElementById('coverCanvas');
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    c.width = c.offsetWidth || window.innerWidth;
+    c.height = c.offsetHeight || window.innerHeight;
+
+    const pts = Array.from({length: 60}, () => ({
+      x: Math.random() * c.width, y: Math.random() * c.height,
+      vx: (Math.random() - .5) * .3, vy: (Math.random() - .5) * .3,
+      s: Math.random() * 1.5 + .5, a: Math.random() * .15 + .03
+    }));
+
+    // Simulate packet nodes with lines
+    function draw() {
+      ctx.clearRect(0, 0, c.width, c.height);
+
+      // Draw connections
+      for (let i = 0; i < pts.length; i++) {
+        for (let j = i + 1; j < pts.length; j++) {
+          const dx = pts[i].x - pts[j].x;
+          const dy = pts[i].y - pts[j].y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < 120) {
+            ctx.beginPath();
+            ctx.moveTo(pts[i].x, pts[i].y);
+            ctx.lineTo(pts[j].x, pts[j].y);
+            ctx.strokeStyle = `rgba(0, 212, 255, ${.04 * (1 - d/120)})`;
+            ctx.lineWidth = .5;
+            ctx.stroke();
+          }
+        }
+      }
+
+      pts.forEach(p => {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0) p.x = c.width;
+        if (p.x > c.width) p.x = 0;
+        if (p.y < 0) p.y = c.height;
+        if (p.y > c.height) p.y = 0;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 212, 255, ${p.a})`;
+        ctx.fill();
+      });
+      requestAnimationFrame(draw);
+    }
+    draw();
+  }
+
+  go(0);
+  initCover();
+</script>
+</body>
+</html>
