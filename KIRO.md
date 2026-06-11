@@ -7,7 +7,7 @@ Infrastructure-as-code repository for OCI (Oracle Cloud Infrastructure) provisio
 ```
 scripts/oci/          – CLI-driven provisioning tooling
   oci_provision.py    – Idempotent OCI provisioner (create/destroy via OCI CLI)
-  oci_infra.yml       – Declarative infra config (VCN, subnets, compute)
+  oci_infra.yaml      – Declarative infra config (VCN, subnets, compute)
 docs/oci/             – Setup guides (API key generation, etc.)
 presentations/        – Technical presentations (TCP/IP foundations)
 ```
@@ -21,16 +21,16 @@ presentations/        – Technical presentations (TCP/IP foundations)
 ## Usage
 ```bash
 # Dry-run full provision
-python3 scripts/oci/oci_provision.py --config scripts/oci/oci_infra.yml --dry-run
+python3 scripts/oci/oci_provision.py --config scripts/oci/oci_infra.yaml --dry-run
 
 # Provision networking only
-python3 scripts/oci/oci_provision.py --config scripts/oci/oci_infra.yml --only vcn,igw,routes,seclist,subnet
+python3 scripts/oci/oci_provision.py --config scripts/oci/oci_infra.yaml --only vcn,igw,routes,seclist,subnet
 
 # Launch compute
-python3 scripts/oci/oci_provision.py --config scripts/oci/oci_infra.yml --only compute
+python3 scripts/oci/oci_provision.py --config scripts/oci/oci_infra.yaml --only compute
 
 # Teardown
-python3 scripts/oci/oci_provision.py --config scripts/oci/oci_infra.yml --destroy
+python3 scripts/oci/oci_provision.py --config scripts/oci/oci_infra.yaml --destroy
 ```
 
 ## Prerequisites
