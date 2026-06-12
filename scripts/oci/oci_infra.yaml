@@ -19,10 +19,10 @@ region: us-ashburn-1
 
 # Network
 vcns:
-  - name: MainSGVCN
+  - name: CoreNetwork
     cidr: "10.0.0.0/16"
     tags:
-      environment: demo
+      environment: prod
       managed-by: oci-cli
 
     subnets:
@@ -75,12 +75,12 @@ vcns:
 #
 # boot_volume_vpus: 10=balanced, 20=high, 120=ultra-high
 instances:
-  - name: vpn8
+  - name: dns1
     shape: VM.Standard.A1.Flex
     ocpus: 2
     memory_gb: 12
     image_id: ocid1.image.oc1.iad.aaaaaaaa7okdhcic7y34xenpuxdmdypn2ehdd23fkqjef6toanzghm3m2kna
-    availability_domain: "yudS:US-ASHBURN-AD-2"
+    availability_domain: "UKly:US-ASHBURN-AD-2"
     fault_domain: "FAULT-DOMAIN-3"
     subnet: public_sg_cidr
     assign_public_ip: true
@@ -91,12 +91,12 @@ instances:
     ssh_keys:
       - "~/.ssh/id_ed25519.pub"
 
-  - name: vpn7
+  - name: dns2
     shape: VM.Standard.A1.Flex
     ocpus: 2
     memory_gb: 12
     image_id: ocid1.image.oc1.iad.aaaaaaaa7okdhcic7y34xenpuxdmdypn2ehdd23fkqjef6toanzghm3m2kna
-    availability_domain: "yudS:US-ASHBURN-AD-3"
+    availability_domain: "UKly:US-ASHBURN-AD-3"
     fault_domain: "FAULT-DOMAIN-1"
     subnet: public_sg_cidr
     assign_public_ip: true

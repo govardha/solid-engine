@@ -45,11 +45,17 @@ def oci(args: list, profile: str, dry_run=False, capture_error=False) -> dict:
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         if capture_error:
-            # Parse OCI's JSON error body if available
+            # OCI CLI may return JSON error body or plain text — handle both
             try:
                 err = json.loads(result.stderr)
             except Exception:
-                err = {"message": result.stderr.strip()}
+                # Plain text error — wrap it so caller always gets same shape
+                err = {
+                    "code": "UnknownError",
+                    "message": result.stderr.strip()
+                    or result.stdout.strip()
+                    or "no output",
+                }
             return {"__error__": True, "__detail__": err}
         # Hard failure — print full OCI error and exit
         try:
@@ -393,12 +399,7 @@ def ensure_instance(
         return None
 
     ssh_keys = load_ssh_keys(inst_cfg)
-    shape_config = {"ocpus": inst_cfg["ocpus"], "memoryInGBs": inst_cfg["memory_gb"]}
-    vnic_config = {
-        "assignPublicIp": str(inst_cfg.get("assign_public_ip", True)).lower(),
-        "subnetId": subnet_id or "<dry-run>",
-    }
-
+    shape_config = {"ocpus": float(inst_cfg["ocpus"]), "memoryInGBs": float(inst_cfg["memory_gb"])}
     # Boot volume — size and performance tier
     # OCI default is 50GB / 10 VPUs if omitted — always be explicit
     boot_vol_size = inst_cfg.get("boot_volume_size_gb", 50)
@@ -416,6 +417,8 @@ def ensure_instance(
         f"{boot_vol_size}gb boot @ {boot_vol_vpus} VPUs"
     )
     print(f"    AD: {inst_cfg['availability_domain']}  FD: {inst_cfg['fault_domain']}")
+
+    assign_public_ip = str(inst_cfg.get("assign_public_ip", True)).lower()
 
     # capture_error=True — compute capacity errors should show up, not abort
     result = oci(
@@ -437,8 +440,10 @@ def ensure_instance(
             json.dumps(shape_config),
             "--source-details",
             json.dumps(source_details),
-            "--create-vnic-details",
-            json.dumps(vnic_config),
+            "--subnet-id",
+            subnet_id or "<dry-run>",
+            "--assign-public-ip",
+            assign_public_ip,
             "--metadata",
             json.dumps({"ssh_authorized_keys": ssh_keys}),
             "--freeform-tags",
