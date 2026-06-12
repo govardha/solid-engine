@@ -558,6 +558,22 @@ def destroy_subnet(
     print(f"  ✓ deleted")
 
 
+def destroy_route_rules(vcn_id: str, profile: str, dry_run: bool):
+    banner("DESTROY Route Rules (clear default RT)")
+    vcn_detail = oci(["network", "vcn", "get", "--vcn-id", vcn_id], profile, dry_run)
+    rt_id = vcn_detail.get("data", {}).get("default-route-table-id")
+    if not rt_id:
+        print("  ✓ no default route table found")
+        return
+    print(f"  - clearing rules on {rt_id}")
+    oci(
+        ["network", "route-table", "update", "--rt-id", rt_id, "--route-rules", "[]", "--force"],
+        profile,
+        dry_run,
+    )
+    print("  ✓ cleared")
+
+
 def destroy_igw(
     igw_cfg: dict, vcn_id: str, compartment_id: str, profile: str, dry_run: bool
 ):
@@ -778,6 +794,23 @@ def main():
                         destroy_subnet(
                             subnet_cfg, vcn["id"], compartment_id, profile, dry_run
                         )
+        if should_run("routes") or should_run("igw"):
+            for vcn_cfg in cfg.get("vcns", []):
+                existing = oci(
+                    [
+                        "network",
+                        "vcn",
+                        "list",
+                        "--compartment-id",
+                        compartment_id,
+                        "--all",
+                    ],
+                    profile,
+                    dry_run,
+                )
+                vcn = find_resource(existing, "display-name", vcn_cfg["name"])
+                if vcn:
+                    destroy_route_rules(vcn["id"], profile, dry_run)
         if should_run("igw"):
             for vcn_cfg in cfg.get("vcns", []):
                 existing = oci(
