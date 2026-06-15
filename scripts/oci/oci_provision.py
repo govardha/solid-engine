@@ -125,26 +125,27 @@ def ensure_vcn(vcn_cfg: dict, compartment_id: str, profile: str, dry_run: bool) 
     if found:
         print(f"  ✓ exists  {found['id']}")
         return found["id"]
-    print(f"  + creating {name} ({vcn_cfg['cidr']})")
-    result = oci(
-        [
-            "network",
-            "vcn",
-            "create",
-            "--compartment-id",
-            compartment_id,
-            "--cidr-block",
-            vcn_cfg["cidr"],
-            "--display-name",
-            name,
-            "--freeform-tags",
-            json.dumps(vcn_cfg.get("tags", {})),
-            "--wait-for-state",
-            "AVAILABLE",
-        ],
-        profile,
-        dry_run,
-    )
+    cmd = [
+        "network",
+        "vcn",
+        "create",
+        "--compartment-id",
+        compartment_id,
+        "--cidr-block",
+        vcn_cfg["cidr"],
+        "--display-name",
+        name,
+        "--freeform-tags",
+        json.dumps(vcn_cfg.get("tags", {})),
+        "--wait-for-state",
+        "AVAILABLE",
+    ]
+    if vcn_cfg.get("ipv6enabled"):
+        cmd += ["--is-ipv6-enabled", "true"]
+        if vcn_cfg.get("ipv6cidr"):
+            cmd += ["--ipv6-cidr-blocks", json.dumps([vcn_cfg["ipv6cidr"]])]
+    print(f"  + creating {name} ({vcn_cfg['cidr']}) ipv6={vcn_cfg.get('ipv6enabled', False)}")
+    result = oci(cmd, profile, dry_run)
     vcn_id = result.get("data", {}).get("id", "<dry-run>")
     print(f"  ✓ created {vcn_id}")
     return vcn_id
@@ -213,13 +214,13 @@ def ensure_route_table(
     route_rules = []
     for rule in rules_cfg:
         entity_id = igw_id if rule["via"] == "internet_gateway" else rule["via"]
-        entity_type = "INTERNET_GATEWAY"
+        dest = rule["destination"]
+        dest_type = rule.get("destination_type", "CIDR_BLOCK")
         route_rules.append(
             {
-                "destination": rule["destination"],
-                "destinationType": "CIDR_BLOCK",
+                "destination": dest,
+                "destinationType": dest_type,
                 "networkEntityId": entity_id,
-                "entityType": entity_type,
             }
         )
     print(f"  + updating with {len(route_rules)} rule(s)")
@@ -251,9 +252,12 @@ def ensure_security_list(
 
     ingress_rules = []
     for rule in sl_cfg.get("ingress", []):
+        source = rule["source"]
+        source_type = "CIDR_BLOCK"
         entry = {
             "protocol": rule["protocol"],
-            "source": rule["source"],
+            "source": source,
+            "sourceType": source_type,
             "isStateless": False,
             "description": rule.get("description", ""),
         }
@@ -272,10 +276,13 @@ def ensure_security_list(
 
     egress_rules = []
     for rule in sl_cfg.get("egress", []):
+        dest = rule["destination"]
+        dest_type = "CIDR_BLOCK"
         egress_rules.append(
             {
                 "protocol": rule["protocol"],
-                "destination": rule["destination"],
+                "destination": dest,
+                "destinationType": dest_type,
                 "isStateless": False,
                 "description": rule.get("description", ""),
             }
@@ -300,6 +307,21 @@ def ensure_security_list(
     )
     print(f"  ✓ updated")
     return sl_id
+
+
+def _derive_ipv6_subnet_cidr(vcn_id: str, profile: str, dry_run: bool) -> str | None:
+    """Derive a /64 from the VCN's /56 prefix for subnet auto-assignment."""
+    if dry_run:
+        return "<auto-ipv6>/64"
+    vcn_detail = oci(["network", "vcn", "get", "--vcn-id", vcn_id], profile, dry_run)
+    prefixes = vcn_detail.get("data", {}).get("ipv6-cidr-blocks", [])
+    if not prefixes:
+        return None
+    # VCN prefix is /56 — derive first available /64 by appending 00
+    # e.g. 2603:c020:401c:1f00::/56 → 2603:c020:401c:1f00::/64
+    vcn_prefix = prefixes[0]  # e.g. "2603:c020:401c:1f00::/56"
+    base = vcn_prefix.split("/")[0]
+    return f"{base}/64"
 
 
 def ensure_subnet(
@@ -333,31 +355,38 @@ def ensure_subnet(
         return found["id"]
     public = subnet_cfg.get("public", True)
     print(f"  + creating {name} ({subnet_cfg['cidr']}) public={public}")
-    result = oci(
-        [
-            "network",
-            "subnet",
-            "create",
-            "--compartment-id",
-            compartment_id,
-            "--vcn-id",
-            vcn_id,
-            "--cidr-block",
-            subnet_cfg["cidr"],
-            "--display-name",
-            name,
-            "--route-table-id",
-            rt_id,
-            "--security-list-ids",
-            json.dumps([sl_id]),
-            "--prohibit-public-ip-on-vnic",
-            str(not public).lower(),
-            "--wait-for-state",
-            "AVAILABLE",
-        ],
-        profile,
-        dry_run,
-    )
+    cmd = [
+        "network",
+        "subnet",
+        "create",
+        "--compartment-id",
+        compartment_id,
+        "--vcn-id",
+        vcn_id,
+        "--cidr-block",
+        subnet_cfg["cidr"],
+        "--display-name",
+        name,
+        "--route-table-id",
+        rt_id,
+        "--security-list-ids",
+        json.dumps([sl_id]),
+        "--prohibit-public-ip-on-vnic",
+        str(not public).lower(),
+        "--wait-for-state",
+        "AVAILABLE",
+    ]
+    ipv6cidr = subnet_cfg.get("ipv6cidr")
+    if ipv6cidr and ipv6cidr != "auto":
+        cmd += ["--ipv6-cidr-block", ipv6cidr]
+    elif ipv6cidr == "auto":
+        derived = _derive_ipv6_subnet_cidr(vcn_id, profile, dry_run)
+        if derived:
+            cmd += ["--ipv6-cidr-block", derived]
+            print(f"    IPv6: {derived} (derived from VCN prefix)")
+        else:
+            print("    ⚠ VCN has no IPv6 prefix — skipping IPv6 on subnet")
+    result = oci(cmd, profile, dry_run)
     subnet_id = result.get("data", {}).get("id", "<dry-run>")
     print(f"  ✓ created {subnet_id}")
     return subnet_id
@@ -470,7 +499,73 @@ def ensure_instance(
 
     instance_id = result.get("data", {}).get("id", "<dry-run>")
     print(f"  ✓ running  {instance_id}")
+
+    # Assign IPv6 address to primary VNIC if requested
+    if inst_cfg.get("assign_ipv6") and instance_id != "<dry-run>":
+        _assign_ipv6_to_instance(instance_id, compartment_id, profile, dry_run)
+
     return instance_id
+
+
+def _assign_ipv6_to_instance(
+    instance_id: str, compartment_id: str, profile: str, dry_run: bool
+) -> None:
+    """Assign an IPv6 address to the primary VNIC of an instance."""
+    attachments = oci(
+        [
+            "compute",
+            "vnic-attachment",
+            "list",
+            "--compartment-id",
+            compartment_id,
+            "--instance-id",
+            instance_id,
+        ],
+        profile,
+        dry_run,
+        capture_error=True,
+    )
+    if is_error(attachments) or dry_run:
+        return
+    vnic_id = None
+    for att in attachments.get("data", []):
+        if att.get("lifecycle-state") == "ATTACHED":
+            vnic_id = att.get("vnic-id")
+            break
+    if not vnic_id:
+        print("  ⚠ could not find primary VNIC for IPv6 assignment")
+        return
+    # Check if IPv6 already assigned
+    vnic_detail = oci(
+        ["network", "vnic", "get", "--vnic-id", vnic_id],
+        profile,
+        dry_run,
+        capture_error=True,
+    )
+    if not is_error(vnic_detail):
+        existing_ipv6 = vnic_detail.get("data", {}).get("ipv6-addresses", [])
+        if existing_ipv6:
+            print(f"  ✓ IPv6 already assigned: {existing_ipv6[0]}")
+            return
+    # Assign IPv6
+    result = oci(
+        [
+            "network",
+            "ipv6",
+            "create",
+            "--vnic-id",
+            vnic_id,
+        ],
+        profile,
+        dry_run,
+        capture_error=True,
+    )
+    if is_error(result):
+        detail = result["__detail__"]
+        print(f"  ⚠ IPv6 assignment failed: {detail.get('message', 'unknown')}")
+    else:
+        ip = result.get("data", {}).get("ip-address", "?")
+        print(f"  ✓ IPv6 assigned: {ip}")
 
 
 # ── destroy functions ─────────────────────────────────────────────────────────

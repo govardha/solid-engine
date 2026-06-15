@@ -1,0 +1,132 @@
+# oci_infra.yaml
+# Generic OCI network + compute definition — safe for public git repos.
+# Copy per environment: dev.yaml, prod.yaml, intern-lab.yaml etc.
+#
+# Usage:
+#   python3 oci_provision.py --config oci_infra.yaml --profile freestar --compartment-id ocid1...
+#   python3 oci_provision.py --config oci_infra.yaml --profile freestar   # if compartment_id set below
+#   python3 oci_provision.py --config oci_infra.yaml                       # uses DEFAULT profile
+#
+# compartment_id below is optional — omit for public repos, pass via --compartment-id instead
+# Uncomment for private repos or local convenience:
+# compartment_id: ocid1.tenancy.oc1..aaaa...
+#
+# Get your compartment_id:
+#   oci iam compartment list --include-root --all \
+#     --query "data[?\"lifecycle-state\"=='ACTIVE'] | [0].id" --raw-output
+
+region: us-ashburn-1
+
+# Network
+vcns:
+  - name: CoreNetwork
+    cidr: "10.0.0.0/16"
+    ipv6enabled: true # allocates an Oracle-assigned /56 prefix
+    # ipv6cidr: "2001:db8:abcd::/48"  # optional: BYOIPv6 prefix
+    tags:
+      environment: prod
+      managed-by: oci-cli
+
+    subnets:
+      - name: public_sg_cidr
+        cidr: "10.0.0.0/24"
+        ipv6cidr: "auto" # "auto" = derive /64 from VCN prefix; or set explicit
+        public: true # false = private subnet, no public IPs on VNICs
+
+    internet_gateway:
+      name: SGInternetGateway
+      enabled: true
+
+    route_rules:
+      - destination: "0.0.0.0/0"
+        via: internet_gateway # keyword resolved to IGW OCID at runtime
+      - destination: "::/0"
+        via: internet_gateway
+        destination_type: CIDR_BLOCK
+
+    security_list:
+      name: DefaultSecurityList
+      ingress:
+        - protocol: "6" # TCP
+          source: "0.0.0.0/0"
+          port: 22
+          description: SSH
+        - protocol: "6"
+          source: "::/0"
+          port: 22
+          description: SSH IPv6
+        - protocol: "6"
+          source: "0.0.0.0/0"
+          port: 51820
+          description: WireGuard
+        - protocol: "6"
+          source: "::/0"
+          port: 51820
+          description: WireGuard IPv6
+        - protocol: "1" # ICMP
+          source: "0.0.0.0/0"
+          description: ping
+        - protocol: "58" # ICMPv6
+          source: "::/0"
+          description: ping6
+      egress:
+        - protocol: "all"
+          destination: "0.0.0.0/0"
+          description: allow all outbound
+        - protocol: "all"
+          destination: "::/0"
+          description: allow all outbound IPv6
+
+# Compute
+# shape: VM.Standard.A1.Flex    = ARM/Ampere — always-free eligible (4cpu/24gb total)
+#        VM.Standard.E2.1.Micro = x86        — always-free eligible (1cpu/1gb fixed)
+#
+# image_id is REGION-SPECIFIC — get current image for your region:
+#   oci compute image list --compartment-id <compartment> \
+#     --operating-system "Canonical Ubuntu" \
+#     --query 'data[?contains("display-name",`22.04`)] | [0].id' --raw-output
+#
+# availability_domain: list valid ADs:
+#   oci iam availability-domain list --query 'data[*].name' --output table
+#
+# ssh_keys: inline pubkey strings or paths to .pub files
+#   - "~/.ssh/id_ed25519.pub"    <- path, expanded at runtime
+#   - "ssh-ed25519 AAAA..."      <- inline pubkey string
+#
+# boot_volume_vpus: 10=balanced, 20=high, 120=ultra-high
+instances:
+  - name: hestia3
+    shape: VM.Standard.A1.Flex
+    ocpus: 1
+    memory_gb: 6
+    image_id: ocid1.image.oc1.iad.aaaaaaaa7okdhcic7y34xenpuxdmdypn2ehdd23fkqjef6toanzghm3m2kna
+    availability_domain: "tIve:US-ASHBURN-AD-2"
+    fault_domain: "FAULT-DOMAIN-3"
+    subnet: public_sg_cidr
+    assign_public_ip: true
+    assign_ipv6: true
+    boot_volume_size_gb: 100
+    boot_volume_vpus: 10
+    tags:
+      role: pihole
+    ssh_keys:
+      - "~/.ssh/id_ed25519.pub"
+      - "~/.ssh/id_ed25519.acl.pub"
+
+  - name: hestia4
+    shape: VM.Standard.A1.Flex
+    ocpus: 1
+    memory_gb: 6
+    image_id: ocid1.image.oc1.iad.aaaaaaaa7okdhcic7y34xenpuxdmdypn2ehdd23fkqjef6toanzghm3m2kna
+    availability_domain: "tIve:US-ASHBURN-AD-3"
+    fault_domain: "FAULT-DOMAIN-1"
+    subnet: public_sg_cidr
+    assign_public_ip: true
+    assign_ipv6: true
+    boot_volume_size_gb: 100
+    boot_volume_vpus: 10
+    tags:
+      role: pihole
+    ssh_keys:
+      - "~/.ssh/id_ed25519.pub"
+      - "~/.ssh/id_ed25519.acl.pub"
