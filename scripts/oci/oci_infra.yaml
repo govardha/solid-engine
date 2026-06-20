@@ -55,14 +55,30 @@ vcns:
           source: "::/0"
           port: 22
           description: SSH IPv6
-        - protocol: "6"
+        - protocol: "17" # UDP
           source: "0.0.0.0/0"
-          port: 51820
+          port: 500
           description: WireGuard
+        - protocol: "17"
+          source: "::/0"
+          port: 500
+          description: WireGuard IPv6
+        - protocol: "17" # UDP
+          source: "0.0.0.0/0"
+          port: 53
+          description: DNS
+        - protocol: "17"
+          source: "::/0"
+          port: 53
+          description: DNS IPv6
+        - protocol: "6" # TCP
+          source: "0.0.0.0/0"
+          port: 53
+          description: DNS TCP
         - protocol: "6"
           source: "::/0"
-          port: 51820
-          description: WireGuard IPv6
+          port: 53
+          description: DNS TCP IPv6
         - protocol: "1" # ICMP
           source: "0.0.0.0/0"
           description: ping
